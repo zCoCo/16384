@@ -173,13 +173,8 @@ classdef Robot
                 dFdth = (robot.fk(thetas+dth) - robot.fk(thetas-dth)) ./ (2*epsilon);
   
                 for frame = 1 : size(dFdth,3)
-                    % TODO Fill in dx/dtheta_j for this frame
                     jacobians(1, joint, frame) = dFdth(1,3,frame);
-
-                    % TODO Fill in dy/dtheta_j for this frame
                     jacobians(2, joint, frame) = dFdth(2,3,frame);
-
-                    % TODO Fill in dtheta_end_effector/dtheta_j for this frame
                     jacobians(3, joint, frame) = dFdth(3,3,frame);
                 end
             end

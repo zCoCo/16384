@@ -1,0 +1,76 @@
+        function jacobians = jacobians(robot, thetas)
+            % Returns the SE(2) Jacobian for each frame (as defined in the forward
+            % kinematics map). Note that 'thetas' should be a column vector.
+
+            % Make sure that all the parameters are what we're expecting.
+            % This helps catch typos and other lovely bugs.
+            if size(thetas, 1) ~= robot.dof || size(thetas, 2) ~= 1
+               error('Invalid thetas: Should be a column vector matching robot DOF count, is %dx%d.', size(thetas, 1), size(thetas, 2));
+            end
+
+            % Allocate a variable containing the Jacobian matrix from each frame
+            % to the base frame.
+            jacobians = zeros(3,robot.dof,robot.dof+1); 
+            epsilon = 0.001;
+           
+            % The jacobian for frame 'i' (as defined by the forward kinematics
+            % function above) is the 3xn matrix jacobians(:,:,i), where n is the
+            % number of degrees of freedom.
+
+            % In this function, compute the _numerical derivative_ for each
+            % element of the Jacobian.
+
+            % Hint: The third row of the Jacobian (the resulting frame angular
+            % velocity given the joint angular velocity) is either 1 or 0,
+            % depending on whether or not that joint contributes to that frame's
+            % rotation.
+
+            % Hint: jacobians(1,j,frame) is the partial differential of
+            % the 'x' coordinate of 'frame' (with respect to the base frame) due
+            % to motion of the joint j.  Mathematically, this is
+            % d{x^0_frame}/d{theta_j}.
+            %
+            % To find this quantity numerically, one can compute the 'numerical
+            % derivative' instead of the 'analytic derivative'.  This is
+            % essentially approximating g'(x), the derivative of some function
+            % g(x) at x, by computing (g(x+dx) - g(x-dx)) / (2*dx).
+            %
+            % Applying this to the task of finding jacobians(1,j,frame), we know
+            % that:
+            %   x represents theta
+            %   g is the forward kinematics to this point, or the (1, 3, frame)
+            %     index of the result of calling fk.
+            %   dx is a vector of zeros for each joint except for joint j, and a
+            %     small value for j (use the 'epsilon' defined above).
+            %
+            % This same logic can be used to find the y component, or
+            % jacobians(2,j,frame).
+
+            % Reminder: to get the x and y coordinates of the origin of each
+            % frame, one could call the following commands (essentially pulling
+            % out the translation term from the homogeneous transform to each
+            % frame)
+            %
+            % frames = robot.fk(thetas); % Find the frames
+            % frames_x = base_frames(1,3,:); % Get x values of the origins
+            % frames_y = base_frames(2,3,:); % Get y values of the origins
+
+% --------------- BEGIN STUDENT SECTION ----------------------------------
+            for joint = 1 : robot.dof
+
+                % TODO perturb the FK by 'epsilon' in this joint, and find the
+                % origin of each frame.
+
+                for frame = 1 : size(base_frames,3)
+                    % TODO Fill in dx/dtheta_j for this frame
+                    jacobians(1, joint, frame) = 0;
+
+                    % TODO Fill in dy/dtheta_j for this frame
+                    jacobians(2, joint, frame) = 0;
+
+                    % TODO Fill in dtheta_end_effector/dtheta_j for this frame
+                    jacobians(3, joint, frame) = 0;
+                end
+            end
+% --------------- END STUDENT SECTION ------------------------------------
+        end

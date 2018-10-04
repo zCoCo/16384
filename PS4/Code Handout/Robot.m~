@@ -168,19 +168,20 @@ classdef Robot
 
 % --------------- BEGIN STUDENT SECTION ----------------------------------
             for joint = 1 : robot.dof
-   
-                dth = zeros(robot.dof,1); dth(joint) = epsilon;
-                dFdth = (robot.fk(thetas+dth) - robot.fk(thetas-dth)) ./ (2*epsilon);
-  
-                for frame = 1 : size(dFdth,3)
+
+                
+                % TODO perturb the FK by 'epsilon' in this joint, and find the
+                % origin of each frame.
+
+                for frame = 1 : size(base_frames,3)
                     % TODO Fill in dx/dtheta_j for this frame
-                    jacobians(1, joint, frame) = dFdth(1,3,frame);
+                    jacobians(1, joint, frame) = 0;
 
                     % TODO Fill in dy/dtheta_j for this frame
-                    jacobians(2, joint, frame) = dFdth(2,3,frame);
+                    jacobians(2, joint, frame) = 0;
 
                     % TODO Fill in dtheta_end_effector/dtheta_j for this frame
-                    jacobians(3, joint, frame) = dFdth(3,3,frame);
+                    jacobians(3, joint, frame) = 0;
                 end
             end
 % --------------- END STUDENT SECTION ------------------------------------

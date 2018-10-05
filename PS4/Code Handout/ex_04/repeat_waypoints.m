@@ -41,8 +41,9 @@ n_points = 100 * segment_duration; % commands/sec * sec
 trajectories = zeros(size(initial_thetas,1), n_points, size(waypoints,2)+1);
 trajectories(:,:,1) = linear_joint_trajectory(initial_thetas, waypoints(:,1), n_points);
 i = 2;
-while(i <= size(waypoints,2))
+while(i <= (size(waypoints,2)+1))
     trajectories(:,:,i) = linear_joint_trajectory(waypoints(:,i-1), waypoints(:,i), n_points);
+    i=i+1
 end
 
 %% 2) Start logging (use below code)

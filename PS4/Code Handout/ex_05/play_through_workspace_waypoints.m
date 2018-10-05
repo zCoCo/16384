@@ -46,10 +46,11 @@ trajectories(:,:,1) = linear_workspace_trajectory(initial_thetas, th1, n_points)
 
 i = 2;
 th_prev = th1;
-while(i <= size(workspace_positions,2))
+while(i <= (size(workspace_positions,2)+1))
     thi = robot.ik(th_prev, workspace_positions(:,i-1));
     trajectories(:,:,i) = linear_joint_trajectory(thi, workspace_positions(:,i), n_points);
     th_prev = thi;
+i = i+1
 end
 
 %% 2) Start logging (use below code)

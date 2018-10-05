@@ -5,11 +5,9 @@ function demo5()
     
     
     wps = teach_waypoints();
-    wpsw = zeros(2, size(wps,2));
+    ps = zeros(1, size(wps,2));
     for i = 1:size(wps,2)
-        pi = robot.ee(wps(:,i));
-        wpsw(:,i) = pi(1:2);
-    end
-    wpsw = wpsw;
-    play_through_workspace_waypoints(robot, wpsw, 2);
+        pos = robot.ee(wps
+    
+    play_through_workspace_waypoints(robot, pos, 2);
 end % #demo4

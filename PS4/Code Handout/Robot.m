@@ -208,7 +208,7 @@ classdef Robot
             stopping_condition = 0.00005;
 
             % Also, limit to a maximum number of iterations.
-            max_iter = 100;
+            max_iter = 250;
             num_iter = 0;
 
 % --------------- BEGIN STUDENT SECTION ----------------------------------

@@ -38,10 +38,10 @@ initial_thetas = fbk.position'; % (The transpose turns the feedback into a colum
 %%    resolution so that when commanded at 100Hz, these will last for
 %%    approximately 'segment_duration' seconds.
 n_points = 100 * segment_duration; % commands/sec * sec
-trajectories = zeros(size(initial_thetas,1), n_points, size(waypoints,2)+1);
+trajectories = zeros(size(initial_thetas,1), n_points, size(waypoints,2));
 trajectories(:,:,1) = linear_joint_trajectory(initial_thetas, waypoints(:,1), n_points);
 i = 2;
-while(i <= (size(waypoints,2)+1))
+while(i <= size(waypoints,2))
     trajectories(:,:,i) = linear_joint_trajectory(waypoints(:,i-1), waypoints(:,i), n_points);
     i=i+1
 end
@@ -60,7 +60,7 @@ logFile = robot_hardware.startLog('file', fullfile(currentDir, 'repeat_waypoints
 %%        % Wait a little bit to send at ~100Hz.
 %%        pause(0.01);
 %%    end
-for i = 1:(size(waypoints,2)+1)
+for i = 1:size(waypoints,2)
     for j = 1:n_points
         % Send command to the robot
         cmd.position = trajectories(:,j,i)'; % transpose turns column into row vector for commands

@@ -18,9 +18,17 @@ function [ trajectory ] = linear_joint_trajectory(start_theta, goal_theta, num_p
 %   - MATLAB's linspace function can be very useful here!
 
 % --------------- BEGIN STUDENT SECTION ----------------------------------
+if size(start_theta) ~= size(goal_theta)
+    error('Start and Goal Angle Vectors Must Have the Same Dimensions!'); 
+end
 
 trajectory = zeros(size(start_theta,1), num_points);
 
+i = 1;
+while( i <= size(start_theta,1) )
+    trajectory(i,:) = linspace(start_theta(i), goal_theta(i), num_points);
+    i = i+1;
+end
 % --------------- END STUDENT SECTION ------------------------------------
 
 end

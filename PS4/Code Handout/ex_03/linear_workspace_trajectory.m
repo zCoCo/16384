@@ -23,14 +23,18 @@ trajectory = zeros(size(start_theta,1), num_points);
 % We know the first column:
 trajectory(:, 1) = start_theta;
 
-% HINT: it may be useful to first calculate the desired workspace trajectory to
-% reference in the loop below
+w_traj = zeros(size(goal_pos,1), num_points); % Workspace trajectory
+start_pos = robot.ee(start_theta); start_pos = start_pos(1:size(goal_pos,1));
+
+i = 1;
+while( i <= size(start_pos,1) )
+    w_traj(i,:) = linspace(start_pos(i), goal_pos(i), num_points);
+    i = i+1;
+end
 
 % Find the rests:
 for col = 2:num_points
-
-    %% Fill in trajectory(:,col) here. HINT: use trajectory(:,col-1) to help!
-
+    trajectory(:,col) = robot.ik(trajectory(:,col-1), w_traj(:,col));
 % --------------- END STUDENT SECTION ------------------------------------
 end
 

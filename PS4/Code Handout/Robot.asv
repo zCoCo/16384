@@ -224,17 +224,17 @@ classdef Robot
                 % 'robot.end_effector' function, and the 'robot.jacobians'
                 % function to help solve this problem
                 if (size(goal_position, 1) == 2) % [x;y] goal
-                    cost_gradient = 2 * Jinv(:, 1:2) * (pe(1:2) - goal_position);
+                    cost_gradient = 2 * Jinv(1:2, :) * (pe(1:2) - goal_position);
                 else % [x;y;theta] goal
-                    cost_gradient = 2 * Jinv(:, 1:3) * (pe(1:3) - goal_position);
+                    cost_gradient = 2 * Jinv(1:3, :) * (fk(1:3) - goal_position);
                 end
 
-                thetas = thetas - cost_gradient * step_size;
+                % Update 'thetas'
+                % TODO
 
-                if( norm(cost_gradient) < stopping_condition )
+                if( norm(cost_gradient) < stopping_condition)
                     break;
                 end
-                
                 num_iter = num_iter + 1;
             end
 % --------------- END STUDENT SECTION ------------------------------------
@@ -242,7 +242,7 @@ classdef Robot
         
         % Shorthand for preforming the inverse kinematics.
         function ik = ik(robot, initial_thetas, goal_position)
-            ik = inverse_kinematics(robot, initial_thetas, goal_position);
+            ik = robot.inverse_kinematics(robot, initial_thetas, goal_position);
         end
     end % methods
 end % classdef

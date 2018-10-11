@@ -124,20 +124,16 @@ end
     % at qf,tf, and has duty cycle d.
     % vm and q can be vectors.
     function q = q_vtrap(t, q0,qf, t0,tf, vm, d)
-        tr = (tf-t0) * d;
+        tr = (tf-t0) / d;
         ta = t0 + tr;
         tb = tf - tr;
-        if(t < t0) %Ensure is safe with out of bounds cases first
+        if(t < t0)
             q = q0;
-        elseif(t > tf)
+        else if(t > tf)
             q = qf;
-        elseif(t <= ta) % up ramp
-            q = q0 + (vm./2./tr) .* (t-t0)^2;
-        elseif(t <= tb) % const. vel.
-            q = q0 + (vm.*tr./2) + vm.*(t-ta);
-        else % down ramp
-            q = q0 + (vm.*tr./2) + vm.*(tb-ta) + (vm./2./tr) .* (tf^2 - 2*tf*t + t^2 - tr^2);
-        end
+        else if(t <= ta)
+            q = q0
+        if(
     end
 
 end

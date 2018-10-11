@@ -78,6 +78,11 @@ for segment = 1:num_segments
     vm = (thf-th0) ./ (times(segment+1) - times(segment) - ramp_time);
 
     i = 0;
+    while(i < points_in_segment)
+        
+    end
+    
+    i = 0;
     while(i < num_ramp_points)
         t = i / frequency + t0;
         trajectory(:,segment_start_point+i) = th0 + (vm./2./ramp_time) .* (t - t0)^2;
@@ -124,16 +129,20 @@ end
     % at qf,tf, and has duty cycle d.
     % vm and q can be vectors.
     function q = q_vtrap(t, q0,qf, t0,tf, vm, d)
-        tr = (tf-t0) / d;
+        tr = (tf-t0) * d;
         ta = t0 + tr;
         tb = tf - tr;
-        if(t < t0)
+        if(t < t0) %Ensure is safe with out of bounds cases first
             q = q0;
-        else if(t > tf)
+        elseif(t > tf)
             q = qf;
-        else if(t <= ta)
-            q = q0
-        if(
+        elseif(t <= ta) % up ramp
+            q = q0 + (vm./2./tr) .* (t-t0)^2;
+        elseif(t <= tb) % const. vel.
+            q = q0 + (vm.*tr./2) + vm.*(t-ta);
+        else % down ramp
+            q = q0 + (vm.*tr./2) + vm.*(tb-ta) + (vm./2./tr) .* (tf^2 - 2*tf*t + t^2 - tr^2);
+        end
     end
 
 end

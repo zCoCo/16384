@@ -59,13 +59,6 @@ for segment = 1:num_segments
     % Number of points in this segment
     points_in_segment = num_points_per_segment(segment);
 
-    % The index of the last point in this segment
-    segment_end_point = segment_start_point + points_in_segment - 1;
-
-    % Find the number of points of the ramp up (and also of the ramp down)
-    % section of the trajectory
-    num_ramp_points = floor(duty_cycle * points_in_segment);
-
     % The length of the ramp up time (and also ramp down time), in seconds.
     ramp_time = (times(segment+1) - times(segment)) * duty_cycle;
 
@@ -75,56 +68,27 @@ for segment = 1:num_segments
     thf = waypoints(:, segment+1); % Goal Angle
     t0 = times(segment);
     tf = times(segment+1);
-    vm = (thf-th0) ./ (times(segment+1) - times(segment) - ramp_time);
+    vm = (thf-th0) ./ (tf - t0 - ramp_time);
 
     i = 0;
-    while(i < num_ramp_points)
+    while(i < points_in_segment)
         t = i / frequency + t0;
-        trajectory(:,segment_start_point+i) = th0 + (vm./2./ramp_time) .* (t - t0)^2;
+        trajectory(:, segment_start_point+i) = q_vtrap(t, th0,thf, t0,tf, vm);
     i = i+1;
     end
-    
-    tha = th0 + (vm./2./ramp_time) .* (num_ramp_points / frequency)^2;
-    ta = num_ramp_points / frequency + t0;
-    tb = (points_in_segment - num_ramp_points - 1) / frequency + t0;
-    thb = tha + vm.*(tb-ta);
-    
-    j = 1;
-    while( j <= size(th0,1) )
-        trajectory(j,segment_start_point+num_ramp_points:segment_end_point-num_ramp_points) = linspace(tha(j), thb(j), points_in_segment-2*num_ramp_points);
-        j = j+1;
-    end
-    
-    i = points_in_segment - num_ramp_points;
-    while(i<points_in_segment)
-        t = i / frequency + t0;
-        trajectory(:,segment_start_point+i) = thb + vm/frequency - (vm./2./ramp_time) .* (tf^2 - 2*t*tf + t^2 - ramp_time^2);
-    i = i+1;
-    end
-    % Fill in the points in this segment of the trajectory.  Those points will
-    % be:
-    % trajectory(:, segment_start_point : segment_start_point + num_ramp_points - 1)              % ramp up
-    % trajectory(:, segment_start_point + num_ramp_points : segment_end_point - num_ramp_points)  % constant velocity
-    % trajectory(:, segment_end_point - num_ramp_points + 1 : segment_end_points)                 % ramp down
-
-    % NOTE: it will be useful to default some helper variables here to match
-    % the equations from the background material, and potentially loop through
-    % the trajectory joint-by-joint and point-by-point to fill in each element
-    % directly unless you are familiar with MATLAB vector operations.
-    
     % --------------- END STUDENT SECTION ------------------------------------
 
     % Update the starting index as we move to the next segment.
     segment_start_point = segment_start_point + points_in_segment;
 end
-
-    % Encapsulate in a pure-transient function to ensure continuity
+    % Encapsulate in a pure-transient function to ensure continuity and
+    % allow for easily switching to different velocity profile.
     % Returns the position of the joint at the given time t for a
     % trapezoidal profile with max velocity vm, which starts at q0,t0, ends
-    % at qf,tf, and has duty cycle d.
+    % at qf,tf.
     % vm and q can be vectors.
-    function q = q_vtrap(t, q0,qf, t0,tf, vm, d)
-        tr = (tf-t0) * d;
+    function q = q_vtrap(t, q0,qf, t0,tf, vm)
+        tr = (tf-t0) * duty_cycle;
         ta = t0 + tr;
         tb = tf - tr;
         if(t < t0) %Ensure is safe with out of bounds cases first
@@ -136,8 +100,7 @@ end
         elseif(t <= tb) % const. vel.
             q = q0 + (vm.*tr./2) + vm.*(t-ta);
         else % down ramp
-            q = q0 + (vm.*tr./2) + vm.*(tb-ta) + (vm./2./tr) .* (tf^2 - 2*tf*t + t^2 - tr^2);
+            q = q0 + (vm.*tr./2) + vm.*(tb-ta) - (vm./2./tr) .* (tf^2 - 2*tf*t + t^2 - tr^2);
         end
     end
-
 end

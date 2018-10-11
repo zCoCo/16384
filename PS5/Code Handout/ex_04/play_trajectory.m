@@ -37,7 +37,6 @@ logFile = robot_hardware.startLog('file', fullfile(currentDir, 'robot_data'));
 % command frequency, in Hz
 frequency = 100;
 
-
 %% Drive the robot from the initial position to the first waypoint over
 %% 2.5 seconds.
 traj_from_start = trajectory_trap_vel([initial_thetas trajectory(:,1)], [0, 2.5], 100, 0.25);
@@ -59,6 +58,21 @@ end
 
 % Using similar code to that above, move through the trajectory passed into this
 % function.
+
+traj_vel = diff(trajectory,1,2);
+
+for i = 1 : (size(trajectory, 2) - 1)
+    % Send command to the robot
+    cmd.position = trajectory(:,i)'; % transpose turns column into row vector for commands
+    if (use_velocity)
+      cmd.velocity = traj_vel(:,i)' * frequency; % transpose turns column into row vector for commands
+    end
+    robot_hardware.set(cmd);
+
+    % Wait a little bit to send at ~100Hz.
+    pause(1 / frequency);
+end
+
 
 %% --------------- END STUDENT SECTION ------------------------------------
 

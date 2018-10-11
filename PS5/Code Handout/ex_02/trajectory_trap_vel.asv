@@ -72,20 +72,9 @@ for segment = 1:num_segments
     % --------------- BEGIN STUDENT SECTION ----------------------------------
     % Find the maximum velocity through this segment, based on the duty cycle
     th0 = waypoints(:, segment); % Starting Angle
-    thf = waypoints(:,segment+1); % Goal Angle
-    vm = (thf-th0) ./ (times(segment+1) - times(segment) - ramp_time);
+    thf = waypoints(:
+    vm = zeros(num_joints, 1); % fill this in!
 
-    i = 0;
-    while(i < num_ramp_points)
-        
-    i = i+1;
-    end
-    i = 0;
-    while(i<points_in_segment)
-        
-    i = i+1;
-    end
-    trajectory(:, segment_start_point : segment_start_point + num_ramp_points - 1) = 
     % Fill in the points in this segment of the trajectory.  Those points will
     % be:
     % trajectory(:, segment_start_point : segment_start_point + num_ramp_points - 1)              % ramp up

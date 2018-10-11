@@ -63,7 +63,13 @@ for segment = 1:num_segments
     % be:
     %   trajectory(:, segment_start_point:segment_end_point)
     % HINT: you can use your code form last week's homework to help!
-
+    start_theta = waypoints(:,segment);
+    goal_theta = waypoints(:,segment+1);
+    i = 1;
+    while( i <= size(start_theta,1) )
+        trajectory(i, segment_start_point:segment_end_point) = linspace(start_theta(i), goal_theta(i), points_in_segment);
+        i = i+1;
+    end
     % --------------- END STUDENT SECTION ------------------------------------
 
     % Update the starting index as we move to the next segment.

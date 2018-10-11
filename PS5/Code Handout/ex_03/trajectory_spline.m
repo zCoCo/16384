@@ -36,14 +36,6 @@ if (length(frequency) ~= 1 || frequency < 5)
     error('Invalid control frequency (must be at least 5Hz)');
 end
 
-%% First, we go through each segment between waypoints, and calculate how many
-%% points we must generate in this segment given our control frequency.
-num_points_per_segment = zeros(1, num_segments);
-for segment = 1:num_segments
-    dt = times(segment+1) - times(segment);
-    num_points_per_segment(segment) = dt * frequency;
-end
-
 % --------------- BEGIN STUDENT SECTION ----------------------------------
 
 % Compute the cubic spline which interpolates the given waypoints, and has zero
@@ -58,7 +50,18 @@ end
 % Note: spline(x, [0 y 0], xx) constrains the first/last point to have% zero
 % velocity. Here, '0' must be sized appropriately for the number of rows in 'y'.
 
-trajectory = zeros(num_joints, sum(num_points_per_segment)); % Replace this with actual value of trajectory!
+num_points = (times(end) - times(1))*frequency;
+
+trajectory = zeros(num_joints, num_points); % Replace this with actual value of trajectory!
+
+endslope = zeros(size(waypoints,1), 1);
+buffered_waypoints = [endslope, waypoints, endslope];
+point_times = linspace(times(1), times(end), num_points);
+i = 1;
+while(i <= size(waypoints,1))
+    trajectory(i,:) = spline(times, buffered_waypoints(i,:), point_times);
+i = i+1;
+end
 
 % --------------- END STUDENT SECTION ------------------------------------
 

@@ -21,7 +21,7 @@ for i = 1:num_traj
     plot(traj_time, traj{i}, 'g--', 'LineWidth', 1);
     xlim([times{i}(1), times{i}(end)]);
     for j = 1:size(waypoints{i},1)
-        scatter(times{i}, waypoints{i}(j,:));
+        scatter(times{i}, [waypoints{i}(j)]);
     end
     hold off;
     legend('Your Trajectory', 'Correct Trajectory', 'location', 'northEast');

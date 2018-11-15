@@ -58,28 +58,38 @@ classdef Robot3D
                 error('Invalid number of joints: %d found, expecting %d', size(thetas, 1), robot.dof);
             end
             
-            % Allocate a variable containing the transforms from each frame
-            % to the base frame.
-            n = robot.dof;
-            frames = zeros(3,3,n+1); % Set of homogeneous transforms to be populated
-            % The transform from the base of link 'i' to the base frame (H^0_i)
-            % is given by the 3x3 matrix frames(:,:,i).
+            frames = zeros(4,4,robot.dof+1); % Set of homogeneous transforms to be populated
 
-            % The transform from the end effector to the base frame (H^0_i) is
-            % given by the 3x3 matrix frames(:,:,end).
-            
             % Shorthand to Ease Reading:
-            c = @(xx) cos(thetas(xx)); % Returns the cos of joint angle n
-            s = @(xx) sin(thetas(xx)); % Returns the sin of  joint angle n
-            l = @(xx) robot.link_lengths(xx); % Returns the length of the nth link
-
-            frames(:,:,1) = [c(1), -s(1), 0; s(1), c(1), 0; 0,0,1];
+            ct = @(nn) cos(thetas(nn)); % Returns the cos of joint angle nn
+            st = @(nn) sin(thetas(nn)); % Returns the sin of joint angle nn
+            ca = @(nn) cos(robot.DH_params.alphas(nn)); % Returns the cos of the DH alpha for frame nn
+            sa = @(nn) sin(robot.DH_params.alphas(nn)); % Returns the cos of the DH alpha for frame nn
+            
+            a = @(nn) robot.DH_params.as(nn); % Returns the DH a offset for frame nn
+            d = @(nn) robot.DH_params.ds(nn); % Returns the DH d offset for frame nn
+            
+            % Compute frame of first joint:
+            frames(:,:,1) = [...
+                ct(1), -st(1)*ca(1), st(1)*sa(1), a(1)*ct(1);...
+                st(1), ct(1)*ca(1), -ct(1)*sa(1), a(1)*st(1);...
+                0, sa(1), ca(1), d(1);...
+                0,0,1,1 ...
+            ];
             i = 2;
-            while(i<=n) % while loops are faster than for in MATLAB
-                frames(:,:,i) = frames(:,:,i-1) * [c(i), -s(i), l(i-1); s(i), c(i), 0; 0,0,1]; % translate then rotate
+            while(i < robot.dof) % For each joint frame, i
+                % Compute local DH transform (H_i^(i-1))
+                A = [...
+                    ct(i), -st(i)*ca(i), st(i)*sa(i), a(i)*ct(i);...
+                    st(i), ct(i)*ca(i), -ct(i)*sa(i), a(i)*st(i);...
+                    0, sa(i), ca(i), d(i);...
+                    0,0,1,1 ...
+                ];
+                frames(:,:,i) = frames(:,:,i-1) * A;
             i = i+1;
             end
-            frames(:,:,n+1) = frames(:,:,n) * [1, 0, l(n); 0,1,0; 0,0,1]; % translate to end effector
+            
+            frames(:,:,n+1) = frames(:,:,n) * [1, 0, l(n); 0,1,0; 0,0,1]; % TODO: translate to end effector (tool) frame
         end
        
         % Shorthand for returning the forward kinematics.
@@ -110,7 +120,7 @@ classdef Robot3D
         end
         
         function jacobians = jacobians(robot, thetas)
-            % Returns the SE(3) Jacobian for each frame.
+            % Returns the SE(3) Analytical Jacobian for each frame.
 
             % Make sure that all the parameters are what we're expecting.
             % This helps catch typos and other lovely bugs.
@@ -119,30 +129,29 @@ classdef Robot3D
             end
 
             fk = robot.fk(thetas);
-            o_n = fk(1:3,4,end); % Position of end-effectorr origin w.r.t. {0} = H*[0,0,0,1]^T 
             
             j = 1;
-            while(j <= robot.dof) % For each joint j
-                i = 1;
+            while(j <= robot.dof) % For each joint frame j
+                o_j = fk(1:3,4,end); % Position of target frame origin w.r.t. {0} = H*[0,0,0,1]^T    
+                
+                % Create first column of jacobian for joint frame j:
+                z = [0;0;1]; % Orientation of z-axis for {0}
+                o = [0;0;0]; % Position of origin for {0}
+                jacobians(1:3, 1, j) = cross(z, (o_j - o));
+                jacobians(4:6, 1, j) = z;
+                
+                i = 2;
                 while(i <= robot.dof) % For each column of the jacobian, i
-                    H = fk(:,:,j); % Homogenous transform to joint j-1
+                    H = fk(:,:,i-1); % Homogenous transform to joint j-1
                     z = H(1:3,3); % Orientation of previous z-axis w.r.t. {0} = H*[0,0,1,0]^T 
                     o = H(1:3,4); % Position of previous origin w.r.t. {0} = H*[0,0,0,1]^T
 
-                    jacobians(1:3, j, 
-                    dth = zeros(robot.dof,1); dth(joint) = epsilon;
-                    dFdth = (robot.fk(thetas+dth) - robot.fk(thetas-dth)) ./ (2*epsilon);
-
-                    for frame = 1 : size(dFdth,3)
-                        jacobians(1, joint, frame) = dFdth(1,3,frame);
-                        jacobians(2, joint, frame) = dFdth(2,3,frame);
-                        jacobians(3, joint, frame) = dFdth(3,3,frame);
-                    end
+                    jacobians(1:3, i, j) = cross(z, (o_j - o));
+                    jacobians(4:6, i, j) = z;
                 i = i + 1;
                 end
             j = j + 1;
             end
-% --------------- END STUDENT SECTION ------------------------------------
         end % #jacobians
         
         function thetas = inverse_kinematics(robot, initial_thetas, goal_position)

@@ -6,7 +6,7 @@ if nargin == 0
     log = load('sample_ground_truth.mat');
     theta = log.theta;
     torques = log.torques;
-    dh_parameter = log.dhp
+    dh_parameter = log.dhp;
 else
     % Show path of arbitrary RR hebi-logs. We do this by loading a MAT file
     % that gets cleaned after load in order to keep the directory clean.
@@ -32,7 +32,7 @@ for i = 1:size(theta,1) % For each timestep:
     Ts = torques(i,:)';
     jacobians = robot.jacobians(ths); % All jacobians
     Je = jacobians(:,:,end); % Jacobian to end effector
-    forces(i,:) = pinv(Je') * Ts;
+    forces(i,:) = -pinv(Je') * Ts;
 end
 
 % --------------- END STUDENT SECTION ------------------------------------

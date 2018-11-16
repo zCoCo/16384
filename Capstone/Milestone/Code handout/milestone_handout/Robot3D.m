@@ -125,9 +125,9 @@ classdef Robot3D < handle
             x = H_0_ee(1,4);
             y = H_0_ee(2,4);
             z = H_0_ee(3,4);
-            roll = atan2(H_0_ee(3,2), H_0_ee(2,2)); % Rotation angle about z-axis
-            pitch = atan2(H_0_ee(1,1), H_0_ee(1,3)); % Rotation angle about y-axis
-            yaw = atan2(H_0_ee(1,1), H_0_ee(2,1)); % Rotation angle about x-axis
+            yaw = atan2(H_0_ee(3,2), H_0_ee(3,3));
+            pitch = atan2(-H_0_ee(3,1), sqrt(H_0_ee(3,2)^2 + H_0_ee(3,3)^2));
+            roll = atan2(H_0_ee(2,1), H_0_ee(1,1));
            
             % Pack them up nicely.
             ee = [x; y; z; roll; pitch; yaw];

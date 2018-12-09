@@ -84,8 +84,8 @@ classdef CJT < Trajectory
             while(t < Tf)
                 obj.data.ts(i) = t;
                 obj.data.xs(i) = obj.s_t(t);
-                obj.data.as(i) = obj.v_t(t);
-                obj.data.vs(i) = obj.a_t(t);
+                obj.data.vs(i) = obj.v_t(t);
+                obj.data.as(i) = obj.a_t(t);
                 obj.data.js(i) = obj.j_t(t);
                 
                 i = i+1;
@@ -95,8 +95,8 @@ classdef CJT < Trajectory
             if i == N
                 obj.data.ts(i) = Tf;
                 obj.data.xs(i) = s_t(Tf);
-                obj.data.as(i) = v_t(Tf);
-                obj.data.vs(i) = a_t(Tf);
+                obj.data.vs(i) = v_t(Tf);
+                obj.data.as(i) = a_t(Tf);
                 obj.data.js(i) = j_t(Tf);
             end
             
@@ -130,20 +130,21 @@ classdef CJT < Trajectory
                 v1 = ap*tr/2; v2 = v1;
             end
             % Change in position during convex region of velocity profile:
-            s2c = tr * (v2 + ap*tr/2 + 7 * obj.jmax*tr^2 / 12 - 9*obj.jmax*tc*tr/12);
+            s2c = tr * (v2 + ap*tr/2 - obj.jmax*tr^2 / 6);
             sc = ap*tr^2 / 6 + (v1+v2)*(tc-2*tr)/2 + s2c; % Position at max v
             
             if sc > obj.dist(end) / 2
                 % Not enough distance in path to reach vmax; readjust peak
                 % velocity accordingly.
                 % First, assume amax will not attainable during curve:
-                vp = (2 * sqrt(obj.jmax) * obj.dist(end))^(2/3);
+                vp = (0.5 * sqrt(obj.jmax) * obj.dist(end))^(2/3);
                 ap = sqrt(obj.jmax * vp);
                 if ap > obj.amax
                     % But, if amax would be surpassed, recompute vp
                     % accordingly:
+                    am = obj.jmax;
                     jm = obj.jmax;
-                    vp = (am*(am + ((am^3 + 16*sf*jm^2)/am)^(1/2)))/(4*jm);
+                    vp = -(am*(am - 2*((am^3 + 4*obj.dist(end)*jm^2)/(4*am))^(1/2)))/(2*jm);
                     ap = obj.amax;
                     tr = ap / jm;
                     tc = vp / ap + tr;
@@ -154,7 +155,7 @@ classdef CJT < Trajectory
                 % Recompute Trajectory Landmarks:
                 v1 = ap*tr/2;
                 v2 = v1 + ap * (tc-2*tr);
-                s2c = tr * (v2 + ap*tr/2 + 7 * obj.jmax*tr^2 / 12 - 9*obj.jmax*tc*tr/12);
+                s2c = tr * (v2 + ap*tr/2 - obj.jmax*tr^2 / 6);
                 sc = ap*tr^2 / 6 + (v1+v2)*(tc-2*tr)/2 + s2c; % Position at max v
             else
                 % Vmax must held for a while at the middle of the path to
@@ -207,7 +208,7 @@ classdef CJT < Trajectory
             elseif t < obj.params.tcrit(3)
                 v2 = ap * tr /2 + ap * (tc - 2*tr);
                 jm = obj.jmax;
-                s2c = ((t - tc + tr)*(- 2*jm*t^2 - 5*jm*t*tc + 5*jm*t*tr + 6*ap*t + 7*jm*tc^2 - 14*jm*tc*tr - 6*ap*tc + 7*jm*tr^2 + 6*ap*tr + 12*v2))/12;
+                s2c = ((t - tc + tr)*(- jm*t^2 + 2*jm*t*tc - 2*jm*t*tr + 3*ap*t - jm*tc^2 + 2*jm*tc*tr - 3*ap*tc - jm*tr^2 + 3*ap*tr + 6*v2))/6;
                 s = obj.params.xcrit(2) + s2c;
                 
             elseif t < obj.params.tcrit(4)
@@ -218,7 +219,7 @@ classdef CJT < Trajectory
                 jm = obj.jmax;
                 sc = obj.params.xcrit(3);
                 teff = obj.params.tcrit(5) - t + obj.params.tcrit(2);
-                s2c = ((teff - tc + tr)*(7*jm*tc^2 - 5*jm*tc*teff - 14*jm*tc*tr - 6*ap*tc - 2*jm*teff^2 + 5*jm*teff*tr + 6*ap*teff + 7*jm*tr^2 + 6*ap*tr + 12*v2))/12;
+                s2c = ((teff - tc + tr)*(- jm*tc^2 + 2*jm*tc*teff + 2*jm*tc*tr - 3*ap*tc - jm*teff^2 - 2*jm*teff*tr + 3*ap*teff - jm*tr^2 + 3*ap*tr + 6*v2))/6;
                 s = obj.params.xcrit(4) + (sc - s2c - obj.params.xcrit(2));
                 
             elseif t < obj.params.tcrit(6)
@@ -251,13 +252,13 @@ classdef CJT < Trajectory
                 v = ap*tr/2 + ap * (t - tr);
             elseif t < obj.params.tcrit(3)
                 jm = obj.jmax;
-                v = ap*tr/2 + ap*(tc - 2*tr) + ap*(t-tc+tr) - jm * t^2 / 2 + jm * (tc-tr)^2 / 2 + jm*(tr-tc)*(t-tc+tr)/2;
+                v = ap*tr/2 + ap*(tc - 2*tr) + ap*(t-tc+tr) - jm * t^2 / 2 + jm * (tc-tr)^2 / 2 + jm*(tc-tr)*(t-tc+tr);
             elseif t < obj.params.tcrit(4)
                 v = obj.params.vpeak;
             elseif t < obj.params.tcrit(5)
                 teff = obj.params.tcrit(5) - t + obj.params.tcrit(2);
                 jm = obj.jmax;
-                v = ap*tr/2 + ap*(tc - 2*tr) + ap*(teff-tc+tr) - jm * teff^2 / 2 + jm * (tc-tr)^2 / 2 + jm*(tr-tc)*(teff-tc+tr)/2;
+                v = ap*tr/2 + ap*(tc - 2*tr) + ap*(teff-tc+tr) - jm * teff^2 / 2 + jm * (tc-tr)^2 / 2 + jm*(tc-tr)*(teff-tc+tr);
             elseif t < obj.params.tcrit(6)
                 teff = obj.params.tcrit(6) - t + obj.params.tcrit(1);
                 v = ap*tr/2 + ap * (teff - tr);
@@ -282,7 +283,7 @@ classdef CJT < Trajectory
             elseif t < obj.params.tcrit(2)
             	a = ap;
             elseif t < obj.params.tcrit(3)
-                a = ap - ap * (t - obj.params.tcrit(2)) / tr;
+                a = ap * (t - obj.params.tcrit(2)) / tr;
             elseif t < obj.params.tcrit(4)
                 a = 0;
             elseif t < obj.params.tcrit(5)

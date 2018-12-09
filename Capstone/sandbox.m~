@@ -1,0 +1,14 @@
+function sandbox()
+    traj = CJT('sine.csv', 10, 10, 2);
+    
+    figure();
+    hold on
+        plot(traj.data.ts, traj.data.xs);
+        plot(traj.data.ts, traj.data.vs);
+        plot(traj.data.ts, traj.data.as);
+        plot(traj.data.ts, traj.data.js);
+    hold off
+    xlabel('Time [s]');
+    legend('P
+    
+end % #sandbox

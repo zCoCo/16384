@@ -10,7 +10,7 @@ classdef CJT < Trajectory
         % Precomputed Trajectory Path Data:
         data = struct( ...
             'precomputed', false, ... % Whether Data has been Precomputed
-            timestep, 0, ... %          Timestep for Precomputed Data 
+            'timestep', 0, ... %          Timestep for Precomputed Data 
             'ts', [], ... %             Timestamps for Each Data Point
             'xs', [], ... %             Positions along Path at Each Timestamp
             'vs', [], ... %             Velocities along Path at Each Timestamp
@@ -83,10 +83,10 @@ classdef CJT < Trajectory
             i = 1;
             while(t < Tf)
                 obj.data.ts(i) = t;
-                obj.data.xs(i) = s_t(t);
-                obj.data.as(i) = v_t(t);
-                obj.data.vs(i) = a_t(t);
-                obj.data.js(i) = j_t(t);
+                obj.data.xs(i) = obj.s_t(t);
+                obj.data.as(i) = obj.v_t(t);
+                obj.data.vs(i) = obj.a_t(t);
+                obj.data.js(i) = obj.j_t(t);
                 
                 i = i+1;
                 t = t+dt;
@@ -101,7 +101,7 @@ classdef CJT < Trajectory
             end
             
             obj.data.precomputed = true;
-        end
+        end % #precompute
         
         % Determine All Key Parameters for the Trajectory:
         function generateTrajectoryParameters(obj)
@@ -131,7 +131,7 @@ classdef CJT < Trajectory
             end
             % Change in position during convex region of velocity profile:
             s2c = tr * (v2 + ap*tr/2 + obj.jmax*tr^2 / 3 - obj.jmax*tc*tr/2);
-            sc = ap*tr^2 + (v1+v2)*(tc-2*tr)/2 + s2c; % Position at max v
+            sc = ap*tr^2 / 6 + (v1+v2)*(tc-2*tr)/2 + s2c; % Position at max v
             
             if sc > obj.dist(end) / 2
                 % Not enough distance in path to reach vmax; readjust peak
@@ -150,6 +150,11 @@ classdef CJT < Trajectory
                     tr = ap / obj.jmax;
                     tc = 2*tr;
                 end
+                % Recompute Trajectory Landmarks:
+                v1 = ap*tr/2;
+                v2 = v1 + ap * (tc-2*tr);
+                s2c = tr * (v2 + ap*tr/2 + obj.jmax*tr^2 / 3 - obj.jmax*tc*tr/2);
+                sc = ap*tr^2 / 6 + (v1+v2)*(tc-2*tr)/2 + s2c; % Position at max v
             else
                 % Vmax must held for a while at the middle of the path to
                 % be able to reach the end of the path
@@ -180,7 +185,7 @@ classdef CJT < Trajectory
         end % #generateTrajectoryParameters
         
         % Gives the Position at a Given Time into the Trajectory Execution
-        function s = s_t(t)
+        function s = s_t(obj,t)
             % Useful shorthand for better readability:
             ap = obj.params.apeak;
             vp = obj.params.vpeak;
@@ -228,10 +233,10 @@ classdef CJT < Trajectory
             end
         end % #s_t
         % Alternative Function Name for Naming Consistency:
-        function x = x_t(t); x = s_t(t); end
+        function x = x_t(obj,t); x = obj.s_t(t); end
         
         % Gives the Velocity at a Given Time into the Trajectory Execution
-        function v = v_t(t)
+        function v = v_t(obj, t)
             % Useful shorthand for better readability:
             ap = obj.params.apeak;
             tr = obj.params.tcrit(1);
@@ -240,7 +245,7 @@ classdef CJT < Trajectory
             if t < 0
                 v = 0;
             elseif t < obj.params.tcrit(1)
-                v = ap * t^2 / 2;
+                v = ap * t^2 / tr / 2;
             elseif t < obj.params.tcrit(2)
                 v = ap*tr/2 + ap * (t - tr);
             elseif t < obj.params.tcrit(3)
@@ -257,14 +262,14 @@ classdef CJT < Trajectory
                 v = ap*tr/2 + ap * (teff - tr);
             elseif t < obj.params.tcrit(7)
                 teff = obj.params.tcrit(7) - t;
-                v = ap * teff^2 / 2;
+                v = ap * teff^2 / tr / 2;
             else
                 v = 0;
             end
         end % #v_t
         
         % Gives the Acceleration at a Given Time into the Trajectory Execution
-        function a = a_t(t)
+        function a = a_t(obj, t)
             % Useful shorthand for better readability:
             ap = obj.params.apeak;
             tr = obj.params.tcrit(1);
@@ -291,7 +296,7 @@ classdef CJT < Trajectory
         end % #a_t
         
         % Gives the Jerk at a Given Time into the Trajectory Execution
-        function j = j_t(t)
+        function j = j_t(obj, t)
             if t < 0
                 j = 0;
             elseif t < obj.params.tcrit(1)

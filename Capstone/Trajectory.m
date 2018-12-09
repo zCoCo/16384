@@ -7,7 +7,7 @@ classdef Trajectory < handle
         dim; % Dimensionality of Trajectory
         numPts; % Number of Waypoints in Trajectory
         normals; % Matrix of Row Vectors of Normal Orientation of Trajectory at Each Point
-        distance; % Distance (Path-Length) Traversed along Trajectory at Each Point
+        dist; % Distance (Path-Length) Traversed along Trajectory at Each Point
     end % Properties
     
     methods
@@ -30,10 +30,10 @@ classdef Trajectory < handle
             obj.normals(end,:) = obj.normals(end-1,:);
             
             % Compute Cumulative Path Length Traversed at Each Point:
-            obj.distance(1) = 0;
+            obj.dist(1) = 0;
             for i = 2 : obj.numPts
                 Ds = obj.points(i,:) - obj.points(i-1,:);
-                obj.distance(i) = obj.distance(i-1) + norm(Ds);
+                obj.dist(i) = obj.dist(i-1) + norm(Ds);
             end
         end % ctor
         
@@ -42,12 +42,12 @@ classdef Trajectory < handle
         function p = point(obj, dist)
             if(dist < 0)
                 p = obj.points(1,:);
-            elseif(dist > obj.distance(end))
+            elseif(dist > obj.dist(end))
                 p = obj.points(end,:);
             else
                 p = zeros(1,size(obj.points,2)); % Preallocate for speed
                 for i = 1 : size(obj.points,2)
-                    p(i) = interp1(obj.distance, obj.points(:,i), dist, 'spline');
+                    p(i) = interp1(obj.dist, obj.points(:,i), dist, 'spline');
                 end
             end
         end
@@ -57,12 +57,12 @@ classdef Trajectory < handle
         function n = normal(obj, dist)
             if(dist < 0)
                 n = obj.normals(1,:);
-            elseif(dist > obj.distance(end))
+            elseif(dist > obj.dist(end))
                 n = obj.normals(end,:);
             else
                 n = zeros(1,size(obj.normals,2)); % Preallocate for speed
                 for i = 1 : size(obj.normals,2)
-                    n(i) = interp1(obj.distance, obj.normals(:,i), dist, 'spline');
+                    n(i) = interp1(obj.dist, obj.normals(:,i), dist, 'spline');
                 end
             end
         end

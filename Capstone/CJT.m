@@ -1,5 +1,5 @@
 % Creates a Time and Distance Parameterized Constant Jerk Trajectory along
-% a Given Path, Loaded from Data in a CSV File with Row-Vectors of
+% a Given Path of Waypoints stored as a Matrix with Row-Vectors of
 % Waypoints.
 classdef CJT < Trajectory
     properties(SetAccess = private, GetAccess = public)
@@ -48,8 +48,8 @@ classdef CJT < Trajectory
         % acceleration, jerk, and velocity. Optionally precomputes data
         % for x, v, a, j across the entire path if a timestep, dt, is
         % given.
-        function obj = CJT(csv_filename, jm, am, vm, dt) 
-            obj = obj@Trajectory(csv_filename); % Call Superclass ctor
+        function obj = CJT(wps, jm, am, vm, dt)
+            obj = obj@Trajectory(wps); % Call Superclass ctor
             
             obj.jmax = jm;
             obj.amax = am;
@@ -275,6 +275,7 @@ classdef CJT < Trajectory
             % Useful shorthand for better readability:
             ap = obj.params.apeak;
             tr = obj.params.tcrit(1);
+            tc = obj.params.tcrit(3);
             
             if t < 0
                 a = 0;
@@ -283,7 +284,7 @@ classdef CJT < Trajectory
             elseif t < obj.params.tcrit(2)
             	a = ap;
             elseif t < obj.params.tcrit(3)
-                a = ap * (t - obj.params.tcrit(2)) / tr;
+                a = ap - obj.jmax * (t - tc + tr);
             elseif t < obj.params.tcrit(4)
                 a = 0;
             elseif t < obj.params.tcrit(5)

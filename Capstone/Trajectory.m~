@@ -11,8 +11,8 @@ classdef Trajectory < handle
     end % Properties
     
     methods
-        function obj = Trajectory(wps)
-            obj.points = wps;
+        function obj = Trajectory(w)
+            obj.points = Mwps;
             obj.numPts = size(obj.points,1);
             obj.dim = size(obj.points,2);
             if(obj.numPts < obj.dim)

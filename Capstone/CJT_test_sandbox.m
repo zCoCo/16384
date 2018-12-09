@@ -1,6 +1,6 @@
 function CJT_test_sandbox()
     dt = 0.01;
-    traj = CJT('sine.csv', 10, 10, 10, dt);
+    traj = CJT(csvread('sine.csv'), 10, 10, 10, dt);
     traj.dist(end)
     traj.params
     
@@ -22,8 +22,8 @@ function CJT_test_sandbox()
         plot(traj.data.ts, vi, 'b');
         plot(traj.data.ts, traj.data.as, 'k');
         plot(traj.data.ts, ai, 'm');
-        plot(traj.data.ts, traj.data.js);
-        plot(traj.data.ts, ji);
+        plot(traj.data.ts, traj.data.js, 'c');
+        plot(traj.data.ts, ji, 'y');
     hold off
     xlabel('Time [s]');
     legend('Position', 'Velocity', 'Num. Vel.', 'Acceleration', 'Num. Acc.', 'Jerk', 'Num. Jerk');

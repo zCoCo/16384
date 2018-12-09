@@ -6,7 +6,7 @@ classdef Trajectory < handle
         points; % Matrix of Row Vectors of Waypoints
         dim; % Dimensionality of Trajectory
         numPts; % Number of Waypoints in Trajectory
-        normals; % Normal Orientation of Trajectory at Each Point
+        normals; % Matrix of Row Vectors of Normal Orientation of Trajectory at Each Point
         distance; % Distance (Path-Length) Traversed along Trajectory at Each Point
     end % Properties
     
@@ -29,7 +29,7 @@ classdef Trajectory < handle
             obj.normals(1,:) = obj.normals(2,:);
             obj.normals(end,:) = obj.normals(end-1,:);
             
-            % Compute Path Length Traversed at Each Point:
+            % Compute Cumulative Path Length Traversed at Each Point:
             obj.distance(1) = 0;
             for i = 2 : obj.numPts
                 Ds = obj.points(i,:) - obj.points(i-1,:);
@@ -45,6 +45,7 @@ classdef Trajectory < handle
             elseif(dist > obj.distance(end))
                 p = obj.points(end,:);
             else
+                p = zeros(1,size(obj.points,2)); % Preallocate for speed
                 for i = 1 : size(obj.points,2)
                     p(i) = interp1(obj.distance, obj.points(:,i), dist, 'spline');
                 end
@@ -59,6 +60,7 @@ classdef Trajectory < handle
             elseif(dist > obj.distance(end))
                 n = obj.normals(end,:);
             else
+                n = zeros(1,size(obj.normals,2)); % Preallocate for speed
                 for i = 1 : size(obj.normals,2)
                     n(i) = interp1(obj.distance, obj.normals(:,i), dist, 'spline');
                 end

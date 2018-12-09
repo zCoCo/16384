@@ -2,7 +2,7 @@
 % a Given Path, Loaded from Data in a CSV File with Row-Vectors of
 % Waypoints.
 classdef CJT < Trajectory
-    properties
+    properties(SetAccess = private, GetAccess = public)
         jmax; %     Maximum Allowable Jerk
         amax; %     Maximum Allowable Acceleration
         vmax; %     Maximum Allowable Velocity
@@ -43,16 +43,65 @@ classdef CJT < Trajectory
             
     end
     methods
-        function obj = CJT(csv_filename, dt, jm, am, vm) 
+        % Computes all Parameters for a CJT Passing through the Waypoints
+        % in the Specified CSV File with the given maximum allowable 
+        % acceleration, jerk, and velocity. Optionally precomputes data
+        % for x, v, a, j across the entire path if a timestep, dt, is
+        % given.
+        function obj = CJT(csv_filename, jm, am, vm, dt) 
             obj = obj@Trajectory(csv_filename); % Call Superclass ctor
             
             obj.jmax = jm;
             obj.amax = am;
             obj.vmax = vm;
-            obj.timestep = dt;
             
             obj.generateTrajectoryParameters();
+            
+            if nargin > 4
+                obj.precompute(dt);
+            end
         end % ctor
+        
+        % Precomputes and Stores All Trajectory Information using the Given
+        % dt.
+        function precompute(obj, dt)
+            obj.data.timestep = dt;
+            Tf = obj.params.tcrit(end);
+            % If Tf is not clean multiple of dt, add one extra data point
+            % at end, exactly at Tf.
+            N = Tf/dt;
+            N = floor(N) + ceil(N - floor(N));
+            
+            % Pre-allocate Data:
+            obj.data.ts = zeros(1,N);
+            obj.data.xs = zeros(1,N);
+            obj.data.vs = zeros(1,N);
+            obj.data.as = zeros(1,N);
+            obj.data.js = zeros(1,N);
+            
+            t = 0;
+            i = 1;
+            while(t < Tf)
+                obj.data.ts(i) = t;
+                obj.data.xs(i) = s_t(t);
+                obj.data.as(i) = v_t(t);
+                obj.data.vs(i) = a_t(t);
+                obj.data.js(i) = j_t(t);
+                
+                i = i+1;
+                t = t+dt;
+            end
+            % Add final point at T if dt doesn't go cleanly into Tf.
+            if i == N
+                obj.data.ts(i) = Tf;
+                obj.data.xs(i) = s_t(Tf);
+                obj.data.as(i) = v_t(Tf);
+                obj.data.vs(i) = a_t(Tf);
+                obj.data.js(i) = j_t(Tf);
+            end
+            
+            obj.data.precomputed = true;
+        end
         
         % Determine All Key Parameters for the Trajectory:
         function generateTrajectoryParameters(obj)
@@ -178,6 +227,8 @@ classdef CJT < Trajectory
                 s = obj.dist(end);
             end
         end % #s_t
+        % Alternative Function Name for Naming Consistency:
+        function x = x_t(t); x = s_t(t); end
         
         % Gives the Velocity at a Given Time into the Trajectory Execution
         function v = v_t(t)

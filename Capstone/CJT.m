@@ -189,52 +189,88 @@ classdef CJT < Trajectory
             ];
         end % #generateTrajectoryParameters
         
+        %% Get Position-Parameterized Data:
+        function t = t_s(obj,s)
+            if ~obj.data.precomputed
+                dt = obj.params.tcrit(end) / 999;
+                obj.precompute(dt);
+            end
+            t = interp1(obj.data.xs, obj.data.ts, s, 'pchip');
+        end
+        function v = v_s(obj,s)
+            if ~obj.data.precomputed
+                dt = obj.params.tcrit(end) / 999;
+                obj.precompute(dt);
+            end
+            v = interp1(obj.data.xs, obj.data.vs, s, 'pchip');
+        end
+        function a = a_s(obj,s)
+            if ~obj.data.precomputed
+                dt = obj.params.tcrit(end) / 999;
+                obj.precompute(dt);
+            end
+            a = interp1(obj.data.xs, obj.data.as, s, 'pchip');
+        end
+        function j = j_s(obj,s)
+            if ~obj.data.precomputed
+                dt = obj.params.tcrit(end) / 999;
+                obj.precompute(dt);
+            end
+            j = interp1(obj.data.xs, obj.data.js, s, 'pchip');
+        end
+        
+        %% Get Time-Parameterized Data:
+        
         % Gives the Position at a Given Time into the Trajectory Execution
         function s = s_t(obj,t)
-            % Useful shorthand for better readability:
-            ap = obj.params.apeak;
-            vp = obj.params.vpeak;
-            tr = obj.params.tcrit(1);
-            tc = obj.params.tcrit(3);
-            
-            % Determine Stage in Trajectory:
-            if t < 0
-                s = 0;
-            elseif t < obj.params.tcrit(1)
-                s = ap * t^3 / 6 / tr;
-                
-            elseif t < obj.params.tcrit(2)
-                v1 = ap * tr /2;
-                v2 = v1 + ap * (t - tr);
-                s = obj.params.xcrit(1) + (v1+v2)*(t-tr)/2;
-                
-            elseif t < obj.params.tcrit(3)
-                v2 = ap * tr /2 + ap * (tc - 2*tr);
-                jm = obj.jmax;
-                s2c = ((t - tc + tr)*(- jm*t^2 + 2*jm*t*tc - 2*jm*t*tr + 3*ap*t - jm*tc^2 + 2*jm*tc*tr - 3*ap*tc - jm*tr^2 + 3*ap*tr + 6*v2))/6;
-                s = obj.params.xcrit(2) + s2c;
-                
-            elseif t < obj.params.tcrit(4)
-                s = obj.params.xcrit(3) + vp * (t - obj.params.tcrit(3));
-                
-            elseif t < obj.params.tcrit(5)
-                v2 = ap * tr /2 + ap * (tc - 2*tr);
-                jm = obj.jmax;
-                sc = obj.params.xcrit(3);
-                teff = obj.params.tcrit(5) - t + obj.params.tcrit(2);
-                s2c = ((teff - tc + tr)*(- jm*tc^2 + 2*jm*tc*teff + 2*jm*tc*tr - 3*ap*tc - jm*teff^2 - 2*jm*teff*tr + 3*ap*teff - jm*tr^2 + 3*ap*tr + 6*v2))/6;
-                s = obj.params.xcrit(4) + (sc - s2c - obj.params.xcrit(2));
-                
-            elseif t < obj.params.tcrit(6)
-                teff = obj.params.tcrit(6) - t + obj.params.tcrit(1);
-                v1 = ap * tr /2;
-                v2 = v1 + ap * (teff - tr);
-                s = obj.params.xcrit(5) + obj.params.xcrit(2) - obj.params.xcrit(1) - (v1+v2)*(teff-tr)/2;
-            elseif t < obj.params.tcrit(7)
-                teff = obj.params.tcrit(7) - t;
-                s = obj.params.xcrit(6) + obj.params.xcrit(1) - ap * teff^3 / 6 / tr;
+            if obj.data.precomputed
+                s = interp1(obj.data.ts, obj.data.xs, t, 'pchip');
             else
-                s = obj.dist(end);
+                % Useful shorthand for better readability:
+                ap = obj.params.apeak;
+                vp = obj.params.vpeak;
+                tr = obj.params.tcrit(1);
+                tc = obj.params.tcrit(3);
+
+                % Determine Stage in Trajectory:
+                if t < 0
+                    s = 0;
+                elseif t < obj.params.tcrit(1)
+                    s = ap * t^3 / 6 / tr;
+
+                elseif t < obj.params.tcrit(2)
+                    v1 = ap * tr /2;
+                    v2 = v1 + ap * (t - tr);
+                    s = obj.params.xcrit(1) + (v1+v2)*(t-tr)/2;
+
+                elseif t < obj.params.tcrit(3)
+                    v2 = ap * tr /2 + ap * (tc - 2*tr);
+                    jm = obj.jmax;
+                    s2c = ((t - tc + tr)*(- jm*t^2 + 2*jm*t*tc - 2*jm*t*tr + 3*ap*t - jm*tc^2 + 2*jm*tc*tr - 3*ap*tc - jm*tr^2 + 3*ap*tr + 6*v2))/6;
+                    s = obj.params.xcrit(2) + s2c;
+
+                elseif t < obj.params.tcrit(4)
+                    s = obj.params.xcrit(3) + vp * (t - obj.params.tcrit(3));
+
+                elseif t < obj.params.tcrit(5)
+                    v2 = ap * tr /2 + ap * (tc - 2*tr);
+                    jm = obj.jmax;
+                    sc = obj.params.xcrit(3);
+                    teff = obj.params.tcrit(5) - t + obj.params.tcrit(2);
+                    s2c = ((teff - tc + tr)*(- jm*tc^2 + 2*jm*tc*teff + 2*jm*tc*tr - 3*ap*tc - jm*teff^2 - 2*jm*teff*tr + 3*ap*teff - jm*tr^2 + 3*ap*tr + 6*v2))/6;
+                    s = obj.params.xcrit(4) + (sc - s2c - obj.params.xcrit(2));
+
+                elseif t < obj.params.tcrit(6)
+                    teff = obj.params.tcrit(6) - t + obj.params.tcrit(1);
+                    v1 = ap * tr /2;
+                    v2 = v1 + ap * (teff - tr);
+                    s = obj.params.xcrit(5) + obj.params.xcrit(2) - obj.params.xcrit(1) - (v1+v2)*(teff-tr)/2;
+                elseif t < obj.params.tcrit(7)
+                    teff = obj.params.tcrit(7) - t;
+                    s = obj.params.xcrit(6) + obj.params.xcrit(1) - ap * teff^3 / 6 / tr;
+                else
+                    s = obj.dist(end);
+                end
             end
         end % #s_t
         % Alternative Function Name for Naming Consistency:
@@ -242,85 +278,97 @@ classdef CJT < Trajectory
         
         % Gives the Velocity at a Given Time into the Trajectory Execution
         function v = v_t(obj, t)
-            % Useful shorthand for better readability:
-            ap = obj.params.apeak;
-            tr = obj.params.tcrit(1);
-            tc = obj.params.tcrit(3);
-            
-            if t < 0
-                v = 0;
-            elseif t < obj.params.tcrit(1)
-                v = ap * t^2 / tr / 2;
-            elseif t < obj.params.tcrit(2)
-                v = ap*tr/2 + ap * (t - tr);
-            elseif t < obj.params.tcrit(3)
-                jm = obj.jmax;
-                v = ap*tr/2 + ap*(tc - 2*tr) + ap*(t-tc+tr) - jm * t^2 / 2 + jm * (tc-tr)^2 / 2 + jm*(tc-tr)*(t-tc+tr);
-            elseif t < obj.params.tcrit(4)
-                v = obj.params.vpeak;
-            elseif t < obj.params.tcrit(5)
-                teff = obj.params.tcrit(5) - t + obj.params.tcrit(2);
-                jm = obj.jmax;
-                v = ap*tr/2 + ap*(tc - 2*tr) + ap*(teff-tc+tr) - jm * teff^2 / 2 + jm * (tc-tr)^2 / 2 + jm*(tc-tr)*(teff-tc+tr);
-            elseif t < obj.params.tcrit(6)
-                teff = obj.params.tcrit(6) - t + obj.params.tcrit(1);
-                v = ap*tr/2 + ap * (teff - tr);
-            elseif t < obj.params.tcrit(7)
-                teff = obj.params.tcrit(7) - t;
-                v = ap * teff^2 / tr / 2;
+            if obj.data.precomputed
+                v = interp1(obj.data.ts, obj.data.vs, t, 'pchip');
             else
-                v = 0;
+                % Useful shorthand for better readability:
+                ap = obj.params.apeak;
+                tr = obj.params.tcrit(1);
+                tc = obj.params.tcrit(3);
+
+                if t < 0
+                    v = 0;
+                elseif t < obj.params.tcrit(1)
+                    v = ap * t^2 / tr / 2;
+                elseif t < obj.params.tcrit(2)
+                    v = ap*tr/2 + ap * (t - tr);
+                elseif t < obj.params.tcrit(3)
+                    jm = obj.jmax;
+                    v = ap*tr/2 + ap*(tc - 2*tr) + ap*(t-tc+tr) - jm * t^2 / 2 + jm * (tc-tr)^2 / 2 + jm*(tc-tr)*(t-tc+tr);
+                elseif t < obj.params.tcrit(4)
+                    v = obj.params.vpeak;
+                elseif t < obj.params.tcrit(5)
+                    teff = obj.params.tcrit(5) - t + obj.params.tcrit(2);
+                    jm = obj.jmax;
+                    v = ap*tr/2 + ap*(tc - 2*tr) + ap*(teff-tc+tr) - jm * teff^2 / 2 + jm * (tc-tr)^2 / 2 + jm*(tc-tr)*(teff-tc+tr);
+                elseif t < obj.params.tcrit(6)
+                    teff = obj.params.tcrit(6) - t + obj.params.tcrit(1);
+                    v = ap*tr/2 + ap * (teff - tr);
+                elseif t < obj.params.tcrit(7)
+                    teff = obj.params.tcrit(7) - t;
+                    v = ap * teff^2 / tr / 2;
+                else
+                    v = 0;
+                end
             end
         end % #v_t
         
         % Gives the Acceleration at a Given Time into the Trajectory Execution
         function a = a_t(obj, t)
-            % Useful shorthand for better readability:
-            ap = obj.params.apeak;
-            tr = obj.params.tcrit(1);
-            tc = obj.params.tcrit(3);
-            
-            if t < 0
-                a = 0;
-            elseif t < obj.params.tcrit(1)
-                a = ap * t / tr;
-            elseif t < obj.params.tcrit(2)
-            	a = ap;
-            elseif t < obj.params.tcrit(3)
-                a = ap - obj.jmax * (t - tc + tr);
-            elseif t < obj.params.tcrit(4)
-                a = 0;
-            elseif t < obj.params.tcrit(5)
-                a = - ap * (t - obj.params.tcrit(4)) / tr;
-            elseif t < obj.params.tcrit(6)
-                a = -ap;
-            elseif t < obj.params.tcrit(7)
-                a = -ap + ap * (t - obj.params.tcrit(6)) / tr;
+            if obj.data.precomputed
+                a = interp1(obj.data.ts, obj.data.as, t, 'pchip');
             else
-                a = 0;
+                % Useful shorthand for better readability:
+                ap = obj.params.apeak;
+                tr = obj.params.tcrit(1);
+                tc = obj.params.tcrit(3);
+
+                if t < 0
+                    a = 0;
+                elseif t < obj.params.tcrit(1)
+                    a = ap * t / tr;
+                elseif t < obj.params.tcrit(2)
+                    a = ap;
+                elseif t < obj.params.tcrit(3)
+                    a = ap - obj.jmax * (t - tc + tr);
+                elseif t < obj.params.tcrit(4)
+                    a = 0;
+                elseif t < obj.params.tcrit(5)
+                    a = - ap * (t - obj.params.tcrit(4)) / tr;
+                elseif t < obj.params.tcrit(6)
+                    a = -ap;
+                elseif t < obj.params.tcrit(7)
+                    a = -ap + ap * (t - obj.params.tcrit(6)) / tr;
+                else
+                    a = 0;
+                end
             end
         end % #a_t
         
         % Gives the Jerk at a Given Time into the Trajectory Execution
         function j = j_t(obj, t)
-            if t < 0
-                j = 0;
-            elseif t < obj.params.tcrit(1)
-                j = obj.jmax;
-            elseif t < obj.params.tcrit(2)
-            	j = 0;
-            elseif t < obj.params.tcrit(3)
-                j = - obj.jmax;
-            elseif t < obj.params.tcrit(4)
-                j = 0;
-            elseif t < obj.params.tcrit(5)
-                j = - obj.jmax;
-            elseif t < obj.params.tcrit(6)
-                j = 0;
-            elseif t < obj.params.tcrit(7)
-                j = obj.jmax;
+            if obj.data.precomputed
+                j = interp1(obj.data.ts, obj.data.js, t, 'pchip');
             else
-                j = 0;
+                if t < 0
+                    j = 0;
+                elseif t < obj.params.tcrit(1)
+                    j = obj.jmax;
+                elseif t < obj.params.tcrit(2)
+                    j = 0;
+                elseif t < obj.params.tcrit(3)
+                    j = - obj.jmax;
+                elseif t < obj.params.tcrit(4)
+                    j = 0;
+                elseif t < obj.params.tcrit(5)
+                    j = - obj.jmax;
+                elseif t < obj.params.tcrit(6)
+                    j = 0;
+                elseif t < obj.params.tcrit(7)
+                    j = obj.jmax;
+                else
+                    j = 0;
+                end
             end
         end % #j_t
         

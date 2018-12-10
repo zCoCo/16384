@@ -6,6 +6,9 @@ function CJT_test_sandbox()
     traj.params
     
     figure();
+    traj.plot_pts();
+    
+    figure();
     traj.plot_t();
     figure();
     traj.plot_s();

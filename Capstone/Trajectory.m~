@@ -11,8 +11,8 @@ classdef Trajectory < handle
     end % Properties
     
     methods
-        function obj = Trajectory(w)
-            obj.points = Mwps;
+        function obj = Trajectory(wps)
+            obj.points = wps;
             obj.numPts = size(obj.points,1);
             obj.dim = size(obj.points,2);
             if(obj.numPts < obj.dim)
@@ -81,5 +81,23 @@ classdef Trajectory < handle
                 end
             end
         end
+        
+        % Plots the Points of the Trajectory and the Normals Along It
+        function plot_pts(obj)
+            hold on
+                % Lines between Points:
+                plot3(obj.points(:,1), obj.points(:,2), obj.points(:,3), 'b');
+                % Each Point:
+                scatter3(obj.points(:,1), obj.points(:,2), obj.points(:,3));
+                
+                L = obj.dist(end) / 20; % Size of Each Normal Vector
+                Dn = floor(obj.numPts / 49); % Plot 50 Normal Vectors
+                for i = linspace(1,obj.
+                    pts = obj.points(i,:);
+                    pts(end+1,:) = pts(1,:) + L*obj.normals(i,:);
+                    plot3(pts(:,1), pts(:,2), pts(:,3), 'g');
+                end
+                
+        end % #plot_pts
     end % Methods
 end % Class Trajectory

@@ -1,6 +1,7 @@
 % Creates a Time and Distance Parameterized Constant Jerk Trajectory along
 % a Given Path of Waypoints stored as a Matrix with Row-Vectors of
-% Waypoints.
+% Waypoints which Ensures that Jerk, Acceleration, and Velocity Stay Below
+% their Allowed Maximums.
 classdef CJT < Trajectory
     properties(SetAccess = private, GetAccess = public)
         jmax; %     Maximum Allowable Jerk
@@ -46,9 +47,9 @@ classdef CJT < Trajectory
         % Computes all Parameters for a CJT Passing through the Waypoints
         % in the Specified CSV File with the given maximum allowable 
         % acceleration, jerk, and velocity. Optionally precomputes data
-        % for x, v, a, j across the entire path if a timestep, dt, is
-        % given.
-        function obj = CJT(wps, jm, am, vm, dt)
+        % for x, v, a, j across the entire path if a number of points,
+        % npts, is given
+        function obj = CJT(wps, jm, am, vm, npts)
             obj = obj@Trajectory(wps); % Call Superclass ctor
             
             obj.jmax = jm;
@@ -58,6 +59,8 @@ classdef CJT < Trajectory
             obj.generateTrajectoryParameters();
             
             if nargin > 4
+                if npts == 1; npts = 2; end
+                dt = obj.params.tcrit(end) / (npts-1);
                 obj.precompute(dt);
             end
         end % ctor
@@ -142,7 +145,7 @@ classdef CJT < Trajectory
                 if ap > obj.amax
                     % But, if amax would be surpassed, recompute vp
                     % accordingly:
-                    am = obj.jmax;
+                    am = obj.amax;
                     jm = obj.jmax;
                     vp = -(am*(am - 2*((am^3 + 4*obj.dist(end)*jm^2)/(4*am))^(1/2)))/(2*jm);
                     ap = obj.amax;
@@ -174,7 +177,7 @@ classdef CJT < Trajectory
                 2*(tc + thold) - tr, ... % End of Decelerating Linear Velocity Region
                 2*(tc + thold) ... % End of Decelerating Concave Velocity Region
             ];
-            sdecel = (obj.dist(end) - sc); % Path Position where Deceleration Begins
+            sdecel = sc;%(obj.dist(end) - sc); % Path Position where Deceleration Begins
             obj.params.xcrit = [...
                 ap*tr^2 / 6, ...
                 sc - s2c,...

@@ -15,10 +15,8 @@ function CJT_test_sandbox()
     As(end) = sum(traj.data.vs)*dt;
     As
     
-    vp = traj.params.vpeak
-    ap = traj.params.apeak
-    jm = traj.jmax
-    sc = vp*(ap^2 + jm*vp)/(2*ap*jm)
+    vp = traj.params.vpeak;
+    ap = traj.params.apeak;
     
     
     % Compute Numerical Derivatives:

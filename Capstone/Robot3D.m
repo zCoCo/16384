@@ -74,9 +74,9 @@ classdef Robot3D < handle
             end % nargin>1
         end % ctor
        
-        % Returns the forward kinematic map for each frame, one for the base of
-        % each link, and one for the end effector. Link i is given by
-        % frames(:,:,i), and the end effector frame is frames(:,:,end).
+        % Returns the forward kinematic map for each frame, one for each 
+        % link. Link i is given by frames(:,:,i), 
+        % and the end effector frame is frames(:,:,end).
         function frames = forward_kinematics(robot, thetas)
             if size(thetas, 2) ~= 1
                 error('Expecting a column vector of joint angles.');
@@ -97,7 +97,7 @@ classdef Robot3D < handle
             a = @(nn) robot.dhp.as(nn); % Returns the DH a offset for frame nn
             d = @(nn) robot.dhp.ds(nn); % Returns the DH d offset for frame nn
             
-            % Compute frame for first joint (0th frame):
+            % Compute frame for first joint (1st frame):
             frames(:,:,1) = [...
                 ct(1), -st(1)*ca(1), st(1)*sa(1), a(1)*ct(1);...
                 st(1), ct(1)*ca(1), -ct(1)*sa(1), a(1)*st(1);...
@@ -122,31 +122,88 @@ classdef Robot3D < handle
         function fk = fk(robot, thetas)
             fk = robot.forward_kinematics(thetas);
         end
+        
+        % Returns the forward kinematic map for only the given frame, f.
+        % More efficient if only a specific frame is needed.
+        function frame = forward_kinematics_frame(robot, f, thetas)
+            if size(thetas, 2) ~= 1
+                error('Expecting a column vector of joint angles.');
+            end
+            
+            if size(thetas, 1) ~= robot.dof
+                error('Invalid number of joints: %d found, expecting %d', size(thetas, 1), robot.dof);
+            end
+
+            % Shorthand to Ease Reading:
+            ct = @(nn) cos(thetas(nn)); % Returns the cos of joint angle nn
+            st = @(nn) sin(thetas(nn)); % Returns the sin of joint angle nn
+            ca = @(nn) cos(robot.dhp.alphas(nn)); % Returns the cos of the DH alpha for frame nn
+            sa = @(nn) sin(robot.dhp.alphas(nn)); % Returns the sin of the DH alpha for frame nn
+            
+            a = @(nn) robot.dhp.as(nn); % Returns the DH a offset for frame nn
+            d = @(nn) robot.dhp.ds(nn); % Returns the DH d offset for frame nn
+            
+            % Compute frame for first joint (1st frame):
+            frame = [...
+                ct(1), -st(1)*ca(1), st(1)*sa(1), a(1)*ct(1);...
+                st(1), ct(1)*ca(1), -ct(1)*sa(1), a(1)*st(1);...
+                0, sa(1), ca(1), d(1);...
+                0,0,0,1 ...
+            ];
+            i = 2;
+            while(i <= f) % For each joint frame, i, and the tool frame
+                % Compute local DH transform (H_i^(i-1))
+                A = [...
+                    ct(i), -st(i)*ca(i), st(i)*sa(i), a(i)*ct(i);...
+                    st(i), ct(i)*ca(i), -ct(i)*sa(i), a(i)*st(i);...
+                    0, sa(i), ca(i), d(i);...
+                    0,0,0,1 ...
+                ];
+                frame = frame * A;
+            i = i+1;
+            end
+        end % #forward_kinematics_frame
        
-        % Returns [x; y; theta] for the end effector given a set of joint
-        % angles. 
-        function ee = end_effector(robot, thetas)
-            % Find the transform to the end-effector frame.
-            frames = robot.fk(thetas);
-            H_0_ee = frames(:,:,end);
+        % Shorthand for returning the forward kinematic map to a specific
+        % frame, f.
+        function fkf = fkf(robot, f, thetas)
+            fkf = robot.forward_kinematics_frame(f, thetas);
+        end
+        
+        % Returns position for the frame with index idx given a set of 
+        % joint angles.
+        function p = position(robot, idx, thetas)
+            % Find the transform to the given frame.
+            H_0_i = robot.fkf(idx, thetas);
            
-            % Extract the components of the end_effector position and
-            % orientation.
-            x = H_0_ee(1,4);
-            y = H_0_ee(2,4);
-            z = H_0_ee(3,4);
-            yaw = atan2(H_0_ee(3,2), H_0_ee(3,3));
-            pitch = atan2(-H_0_ee(3,1), sqrt(H_0_ee(3,2)^2 + H_0_ee(3,3)^2));
-            roll = atan2(H_0_ee(2,1), H_0_ee(1,1));
+            % Extract the components of the position and orientation.
+            x = H_0_i(1,4);
+            y = H_0_i(2,4);
+            z = H_0_i(3,4);
+            yaw = atan2(H_0_i(3,2), H_0_i(3,3));
+            pitch = atan2(-H_0_i(3,1), sqrt(H_0_i(3,2)^2 + H_0_i(3,3)^2));
+            roll = atan2(H_0_i(2,1), H_0_i(1,1));
            
             % Pack them up nicely.
-            ee = [x; y; z; roll; pitch; yaw];
+            p = [x; y; z; roll; pitch; yaw];
+        end % #position
+        % Shorthand for returning the position of the frame with index idx 
+        % given a set of joint angles.
+        function p = p(robot, idx, thetas)
+            p = robot.position(idx, thetas);
         end
-       
+        
+        
+        % Returns position for the end effector given a set of joint
+        % angles.
+        function ee = end_effector(robot, thetas)
+            ee = robot.position(robot.dof, thetas);
+        end % #end_effector
         % Shorthand for returning the end effector position and orientation. 
         function ee = ee(robot, thetas)
             ee = robot.end_effector(thetas);
         end
+        
         
         function jacobians = jacobians(robot, thetas)
             % Returns the SE(3) Analytical Jacobian for each frame.
@@ -194,67 +251,50 @@ classdef Robot3D < handle
                 error('Invalid initial_thetas: Should be a column vector matching robot DOF count, is %dx%d.', size(initial_thetas, 1), size(initial_thetas, 2));
             end
 
-            if (size(goal_position, 1) ~= 2 && size(goal_position, 1) ~= 3) || ...
-               size(goal_position, 2) ~= 1
-                error('Invalid goal_position: Should be a 2 or 3 length column vector, is %dx%d.', size(goal_position, 1), size(goal_position, 2));
-            end
-
-            % Allocate a variable for the joint angles during the optimization;
-            % begin with the initial condition
-            thetas = initial_thetas;
-
-            % Step size for gradient update
-            step_size = 0.1;
-
-            % Once the norm (magnitude) of the computed gradient is smaller than
-            % this value, we stop the optimization
-            stopping_condition = 0.00005;
-
-            % Also, limit to a maximum number of iterations.
-            max_iter = 900;
-            num_iter = 0;
-            
-            % Construct fmincon constraint matrix for joint limits:
-            A = zeros(2*robot.dof, robot.dof);
-            B = zeros(robot.dof,1);
-            for i = 1:robot.dof
-                A(2*i-1,i) = 1;
-                A(2*i,i) = -1;
-                B(2*i-1) = robot.joint_limits.maxs(i);
-                B(2*i) = robot.joint_limits.mins(i);
+            if (size(goal_position, 1) ~= 6 || size(goal_position, 2) ~= 1)
+                error('Invalid goal_position: Should be a 6 length column vector, is %dx%d.', size(goal_position, 1), size(goal_position, 2));
             end
             
-            % Run gradient descent optimization
-            while (num_iter < max_iter)
-                Js = robot.jacobians(thetas);
-                Jinv = Js(:,:,end)';
-                pe = robot.ee(thetas);
-                % Compute the gradient for either an [x;y] goal or an
-                % [x;y;theta] goal, using the current value of 'thetas'.
-                % TODO fill in the gradient of the squared distance cost function
-                % HINT use the answer for theory question 2, the
-                % 'robot.end_effector' function, and the 'robot.jacobians'
-                % function to help solve this problem
-                if (size(goal_position, 1) == 2) % [x;y] goal
-                    cost_gradient = 2 * Jinv(:, 1:2) * (pe(1:2) - goal_position);
-                else % [x;y;theta] goal
-                    cost_gradient = 2 * Jinv(:, 1:3) * (pe(1:3) - goal_position);
-                end
-
-                thetas = thetas - cost_gradient * step_size;
-
-                if( norm(cost_gradient) < stopping_condition )
-                    break;
-                end
-                
-                num_iter = num_iter + 1;
+            function c = cost(q)
+                pe = robot.ee(q);
+                c = (pe-goal_position)' * (pe-goal_position);
             end
-% --------------- END STUDENT SECTION ------------------------------------
+            
+            thetas = fmincon(cost, initial_thetas, [],[],[],[], robot.joint_limits.mins, robot.joint_limits.maxs);
         end % #inverse_kinematics
-        
         % Shorthand for preforming the inverse kinematics.
         function ik = ik(robot, initial_thetas, goal_position)
             ik = inverse_kinematics(robot, initial_thetas, goal_position);
+        end
+        
+        % Performs Inverse Kinematics for System that was Kinematically
+        % Decoupled using External Data. This entails only solving IK for
+        % the joint center and only caring about the given dimension
+        % indices, idxs. Additionally, this function can also perform IK
+        % for complete non-decoupled systems where one or several dimension 
+        % indices (ex. roll=4) doesn't matter.
+        function thetas = inverse_kinematics_decoupled(robot, initial_thetas, goal_position, joint, idxs)% Make sure that all the parameters are what we're expecting.
+            % This helps catch typos and other lovely bugs.
+            if size(initial_thetas, 1) ~= robot.dof || size(initial_thetas, 2) ~= 1
+                error('Invalid initial_thetas: Should be a column vector matching robot DOF count, is %dx%d.', size(initial_thetas, 1), size(initial_thetas, 2));
+            end
+
+            if (size(goal_position, 1) ~= 6 || size(goal_position, 2) ~= 1)
+                error('Invalid goal_position: Should be a 6 length column vector, is %dx%d.', size(goal_position, 1), size(goal_position, 2));
+            end
+            
+            function c = cost(q)
+                pe = robot.p(joint, q);
+                D = pe(idxs)-goal_position(idxs);
+                c = D' * D;
+            end
+            
+            thetas = fmincon(cost, initial_thetas, [],[],[],[], robot.joint_limits.mins, robot.joint_limits.maxs);
+        end % #inverse_kinematics_decoupled
+        
+        % Shorthand for performing the decoupled inverse kinematics.
+        function ikd = ikd(robot, initial_thetas, goal_position, joint, idxs)
+            ikd = inverse_kinematics_decoupled(robot, initial_thetas, goal_position, joint, idxs);
         end
     
         % ** DEPRECATED **
@@ -300,4 +340,4 @@ classdef Robot3D < handle
         end % #plot
 
     end % methods
-end % classdef 3D
+end % classdef Robot3D

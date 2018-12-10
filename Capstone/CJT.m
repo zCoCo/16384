@@ -189,6 +189,53 @@ classdef CJT < Trajectory
             ];
         end % #generateTrajectoryParameters
         
+        %% Useful Trajectory Data:
+        
+        % Returns the Interpolated Point at the Given Time into the
+        % Trajectory Execution
+        function p = point_t(obj,t)
+            p = point(obj.s_t(t));
+        end % #point_t
+        
+        % Returns the Interpolated Trajectory Normal at the Given Time into
+        % the Trajectory Execution
+        function n = normal_t(obj,t)
+            n = normal(obj.s_t(t));
+        end % #normal_t
+        
+        % Returns the Interpolated Trajectory Velocity Vector at the 
+        % Given Distance along the Trajectory Path
+        function v = velocity_s(obj, s, res)
+            % Effective Sample Resolution (ideal number of points along
+            % trajectory):
+            if nargin < 3
+                res = max(1000, obj.numPts);
+            end
+            
+            if(dist < 0)
+                v = zeros(size(obj.points(1,:)));
+            elseif(dist > obj.dist(end))
+                v = zeros(size(obj.points(1,:)));
+            else
+                vm = obj.v_s(s); % Magnitude of Velocity Vector
+                % Use interpolated sampling in case set of waypoints is
+                % sparse:
+                vn = obj.point(s) - obj.point(s - res*obj.dist(end));
+                vn = vn / norm(vn); % Direction of Velocity Vector
+                v = vm*vn;
+            end
+        end % #velocity_s
+        
+        % Returns the Interpolated Trajectory Velocity Vector at the Given 
+        % Time into the Trajectory Execution
+        function v = velocity_t(obj, t, res)
+            if nargin > 2
+                v = obj.velocity_s(obj.s_t(t));
+            else
+                v = obj.velocity_s(obj.s_t(t),res);
+            end
+        end % #velocity_t
+        
         %% Get Position-Parameterized Data:
         function t = t_s(obj,s)
             if ~obj.data.precomputed

@@ -53,7 +53,7 @@ classdef Trajectory < handle
         end % ctor
         
         % Returns the Interpolated Point at the Given Distance along the
-        % Trajectory
+        % Trajectory Path
         function p = point(obj, dist)
             if(dist < 0)
                 p = obj.points(1,:);
@@ -68,7 +68,7 @@ classdef Trajectory < handle
         end
         
         % Returns the Interpolated Trajectory Normal at the Given Distance
-        % along the Trajectory
+        % along the Trajectory Path
         function n = normal(obj, dist)
             if(dist < 0)
                 n = obj.normals(1,:);

@@ -97,10 +97,10 @@ classdef CJT < Trajectory
             % Add final point at T if dt doesn't go cleanly into Tf.
             if i == N
                 obj.data.ts(i) = Tf;
-                obj.data.xs(i) = s_t(Tf);
-                obj.data.vs(i) = v_t(Tf);
-                obj.data.as(i) = a_t(Tf);
-                obj.data.js(i) = j_t(Tf);
+                obj.data.xs(i) = obj.s_t(Tf);
+                obj.data.vs(i) = obj.v_t(Tf);
+                obj.data.as(i) = obj.a_t(Tf);
+                obj.data.js(i) = obj.j_t(Tf);
             end
             
             obj.data.precomputed = true;
@@ -323,5 +323,27 @@ classdef CJT < Trajectory
                 j = 0;
             end
         end % #j_t
+        
+        % Plots the Time-Parameterized Curves of the Trajectory
+        function plot_t(obj)
+            hold on
+                plot(obj.data.ts, obj.data.xs, 'r');
+                plot(obj.data.ts, obj.data.vs, 'g');
+                plot(obj.data.ts, obj.data.as, 'k');
+            hold off
+            xlabel('Time [s]');
+            legend('Position', 'Velocity', 'Acceleration');
+        end
+        
+        % Plots the Position-Parameterized Curves of the Trajectory
+        function plot_s(obj)
+            hold on
+                plot(obj.data.xs, obj.data.ts, 'r');
+                plot(obj.data.xs, obj.data.vs, 'g');
+                plot(obj.data.xs, obj.data.as, 'k');
+            hold off
+            xlabel('Path Position [units]');
+            legend('Time Elapsed', 'Velocity', 'Acceleration');
+        end
     end
 end % Class CJT

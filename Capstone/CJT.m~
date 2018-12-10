@@ -1,6 +1,7 @@
 % Creates a Time and Distance Parameterized Constant Jerk Trajectory along
-% a Given Path, Loaded from Data in a CSV File with Row-Vectors of
-% Waypoints.
+% a Given Path of Waypoints stored as a Matrix with Row-Vectors of
+% Waypoints which Ensures that Jerk, Acceleration, and Velocity Stay Below
+% their Allowed Maximums.
 classdef CJT < Trajectory
     properties(SetAccess = private, GetAccess = public)
         jmax; %     Maximum Allowable Jerk
@@ -46,10 +47,10 @@ classdef CJT < Trajectory
         % Computes all Parameters for a CJT Passing through the Waypoints
         % in the Specified CSV File with the given maximum allowable 
         % acceleration, jerk, and velocity. Optionally precomputes data
-        % for x, v, a, j across the entire path if a timestep, dt, is
-        % given.
-        function obj = CJT(csv_filename, jm, am, vm, dt) 
-            obj = obj@Trajectory(csv_filename); % Call Superclass ctor
+        % for x, v, a, j across the entire path if a number of points,
+        % npts, is given
+        function obj = CJT(wps, jm, am, vm, npts)
+            obj = obj@Trajectory(wps); % Call Superclass ctor
             
             obj.jmax = jm;
             obj.amax = am;
@@ -58,6 +59,8 @@ classdef CJT < Trajectory
             obj.generateTrajectoryParameters();
             
             if nargin > 4
+                if npts == 1; npts = 2; end
+                dt = obj.params.tcrit(end) / (npts-1);
                 obj.precompute(dt);
             end
         end % ctor
@@ -94,10 +97,10 @@ classdef CJT < Trajectory
             % Add final point at T if dt doesn't go cleanly into Tf.
             if i == N
                 obj.data.ts(i) = Tf;
-                obj.data.xs(i) = s_t(Tf);
-                obj.data.vs(i) = v_t(Tf);
-                obj.data.as(i) = a_t(Tf);
-                obj.data.js(i) = j_t(Tf);
+                obj.data.xs(i) = obj.s_t(Tf);
+                obj.data.vs(i) = obj.v_t(Tf);
+                obj.data.as(i) = obj.a_t(Tf);
+                obj.data.js(i) = obj.j_t(Tf);
             end
             
             obj.data.precomputed = true;
@@ -142,9 +145,8 @@ classdef CJT < Trajectory
                 if ap > obj.amax
                     % But, if amax would be surpassed, recompute vp
                     % accordingly:
-                    am = obj.jmax;
+                    am = obj.amax;
                     jm = obj.jmax;
-                    vps = [-am];
                     vp = -(am*(am - 2*((am^3 + 4*obj.dist(end)*jm^2)/(4*am))^(1/2)))/(2*jm);
                     ap = obj.amax;
                     tr = ap / jm;
@@ -161,7 +163,7 @@ classdef CJT < Trajectory
             else
                 % Vmax must held for a while at the middle of the path to
                 % be able to reach the end of the path
-                thold = (obj.dist/2 - sc) / obj.vmax;
+                thold = (obj.dist(end)/2 - sc) / obj.vmax;
             end
             
             obj.params.apeak = ap;
@@ -178,7 +180,7 @@ classdef CJT < Trajectory
             sdecel = (obj.dist(end) - sc); % Path Position where Deceleration Begins
             obj.params.xcrit = [...
                 ap*tr^2 / 6, ...
-                sc - s2c,...
+                sc - s2c, ...
                 sc, ...
                 sdecel, ...
                 sdecel + s2c, ...
@@ -209,7 +211,7 @@ classdef CJT < Trajectory
             elseif t < obj.params.tcrit(3)
                 v2 = ap * tr /2 + ap * (tc - 2*tr);
                 jm = obj.jmax;
-                s2c = ((t - tc + tr)*(- 2*jm*t^2 - 5*jm*t*tc + 5*jm*t*tr + 6*ap*t + 7*jm*tc^2 - 14*jm*tc*tr - 6*ap*tc + 7*jm*tr^2 + 6*ap*tr + 12*v2))/12;
+                s2c = ((t - tc + tr)*(- jm*t^2 + 2*jm*t*tc - 2*jm*t*tr + 3*ap*t - jm*tc^2 + 2*jm*tc*tr - 3*ap*tc - jm*tr^2 + 3*ap*tr + 6*v2))/6;
                 s = obj.params.xcrit(2) + s2c;
                 
             elseif t < obj.params.tcrit(4)
@@ -220,7 +222,7 @@ classdef CJT < Trajectory
                 jm = obj.jmax;
                 sc = obj.params.xcrit(3);
                 teff = obj.params.tcrit(5) - t + obj.params.tcrit(2);
-                s2c = ((teff - tc + tr)*(7*jm*tc^2 - 5*jm*tc*teff - 14*jm*tc*tr - 6*ap*tc - 2*jm*teff^2 + 5*jm*teff*tr + 6*ap*teff + 7*jm*tr^2 + 6*ap*tr + 12*v2))/12;
+                s2c = ((teff - tc + tr)*(- jm*tc^2 + 2*jm*tc*teff + 2*jm*tc*tr - 3*ap*tc - jm*teff^2 - 2*jm*teff*tr + 3*ap*teff - jm*tr^2 + 3*ap*tr + 6*v2))/6;
                 s = obj.params.xcrit(4) + (sc - s2c - obj.params.xcrit(2));
                 
             elseif t < obj.params.tcrit(6)
@@ -259,7 +261,7 @@ classdef CJT < Trajectory
             elseif t < obj.params.tcrit(5)
                 teff = obj.params.tcrit(5) - t + obj.params.tcrit(2);
                 jm = obj.jmax;
-                v = ap*tr/2 + ap*(tc - 2*tr) + ap*(teff-tc+tr) - jm * teff^2 / 2 + jm * (tc-tr)^2 / 2 + jm*(tr-tc)*(teff-tc+tr);
+                v = ap*tr/2 + ap*(tc - 2*tr) + ap*(teff-tc+tr) - jm * teff^2 / 2 + jm * (tc-tr)^2 / 2 + jm*(tc-tr)*(teff-tc+tr);
             elseif t < obj.params.tcrit(6)
                 teff = obj.params.tcrit(6) - t + obj.params.tcrit(1);
                 v = ap*tr/2 + ap * (teff - tr);
@@ -276,6 +278,7 @@ classdef CJT < Trajectory
             % Useful shorthand for better readability:
             ap = obj.params.apeak;
             tr = obj.params.tcrit(1);
+            tc = obj.params.tcrit(3);
             
             if t < 0
                 a = 0;
@@ -284,7 +287,7 @@ classdef CJT < Trajectory
             elseif t < obj.params.tcrit(2)
             	a = ap;
             elseif t < obj.params.tcrit(3)
-                a = ap * (t - obj.params.tcrit(2)) / tr;
+                a = ap - obj.jmax * (t - tc + tr);
             elseif t < obj.params.tcrit(4)
                 a = 0;
             elseif t < obj.params.tcrit(5)
@@ -320,5 +323,9 @@ classdef CJT < Trajectory
                 j = 0;
             end
         end % #j_t
+        
+        function plot()
+            
+        end
     end
 end % Class CJT

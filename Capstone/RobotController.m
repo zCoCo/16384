@@ -86,6 +86,12 @@ classdef RobotController < handle
                 rc.moveTo(traj.x_t(T));
                 rc.moveAt(traj.v_t(T));
                 rc.issueCommand();
+                if rc.sim
+                    % Replot Waypoints Ontop of Trajectory
+                    hold on
+                        scatter3(traj.points(:,1), traj.points(:,2), traj.points(:,3));
+                    hold off
+                end
                 numCommands = numCommands + 1;
     
                 if(T > traj.data.ts(end))

@@ -1,49 +1,60 @@
 classdef Robot3D < handle
-    %ROBOT Represents a general fixed-base kinematic chain.
+    % Robot3D Represents a general fixed-base serial kinematic chain in 
+    % SE(3) space as defined by the given Denavit-Hartenberg Parameters
+    % 
+    % Note: Each joint can be revolute or prismatic. Some legacy comments
+    % refer to "joint angles" where it really should refer to "joint
+    % states".
     
-    properties (SetAccess = 'immutable')
-        dhp = struct(... % Denavit-Hartenberg Parameters for each Joint
-            'as', [], ...
-            'alphas', [], ...
-            'ds', [], ...
-            'mat', []... % matrix of params
-        );
-        dof
-        link_lengths
-        link_masses
-        joint_masses
-        end_effector_mass
-        joint_limits = struct(...
+    properties (SetAccess = immutable)
+        dhp, %                  - DHP Data Object
+        dof, %                  - Robot's Degrees of Freedom
+        link_masses, %          - Mass of Each Robot Link
+        joint_masses, %         - Mass of Each Robot Joint
+        end_effector_mass, %    - Mass of Robot End Effector
+        joint_limits = struct(... % - Boundary Limits on Each Joint
             'mins', [], ...
             'maxs', [] ...
-        );
+        )
+        model %                 - RigidBodyTree Model of Robot for Visualization
     end
     
     methods
-        % Constructor: Makes a brand new robot with geometric and optional 
-        % mass parameters.
-        function robot = Robot3D(dhp, jointmins, jointmaxs, link_masses, joint_masses, end_effector_mass)
+        % Constructor: Makes a brand new robot from the given 
+        % Denavit-Hartenberg Parameter Matrix, a Vector Indicating which 
+        % Column in the DHP Matrix is Actuated (0 if not) for Each Row, 
+        % and Optioinal Joint Limits and Mass Parameters.
+        function robot = Robot3D(dhpMat, actuatedJoints, jointmins, jointmaxs, link_masses, joint_masses, end_effector_mass)
             % Initialize Geometric Parameters:
             % Make sure that all the parameters are what we're expecting.
-            if size(dhp, 2) ~= 4
-                error('Invalid Denavit-Hartenberg Parameter Matrix: should have four columns');
-            end
-                
-            robot.dof = size(dhp, 1); % DH matrix also includes tool frame
             
-            if length(jointmins) ~= robot.dof || length(jointmaxs) ~= robot.dof
-                error('Robot Must Have Same Number of Joint Limits as Dimensions');
-            end
-            robot.joint_limits.mins = jointmins;
-            robot.joint_limits.maxs = jointmaxs;
-            
-            robot.dhp.mat = dhp;
-                robot.dhp.as = dhp(:,1);
-                robot.dhp.alphas = dhp(:,2);
-                robot.dhp.ds = dhp(:,3);
+            robot.dhp = DHP(dhpMat, actuatedJoints);
                 
+            robot.dof = size(dhpMat, 1); % DH matrix also includes tool frame
+            
+            % Initialize Joint Limits:
+            if nargin > 2
+                if length(jointmins) ~= robot.dof || length(jointmaxs) ~= robot.dof
+                    error('Robot Must Have Same Number of Joint Limits as Dimensions');
+                end
+                robot.joint_limits.mins = jointmins;
+                robot.joint_limits.maxs = jointmaxs;
+            else % Set up default functionally unbounded joint limits:
+                robot.joint_limits.mins = zeros(robot.dof,1);
+                robot.joint_limits.maxs = zeros(robot.dof,1);
+                for i = 1:robot.dof
+                    if robot.dhp.actuatedJoints(i) == 3 % is prismatic?
+                        robot.joint_limits.mins(i) = -Inf;
+                        robot.joint_limits.maxs(i) = Inf;
+                    else
+                        robot.joint_limits.mins(i) = -2*pi;
+                        robot.joint_limits.maxs(i) = 2*pi;
+                    end
+                end
+            end
+            
             % Initialize Mass Parameters:
-            if nargin > 1
+            if nargin > 4
                 if size(link_masses, 2) ~= 1
                    error('Invalid link_masses: Should be a column vector, is %dx%d.', size(link_masses, 1), size(link_masses, 2));
                 end
@@ -72,48 +83,62 @@ classdef Robot3D < handle
                 robot.joint_masses = zeros(robot.dof);
                 robot.end_effector_mass = 0;
             end % nargin>1
+            
+            % Create Visualization Model:
+            % Create a rigid body tree object to build the robot.
+            robot.model = robotics.RigidBodyTree;
+            
+            % Create Link 1 and Attach to Base:
+            body = robotics.RigidBody('body1');
+            if robot.dhp.actuatedJoints(1) == 3
+                joint = robotics.Joint('joint1', 'prismatic');
+            elseif robot.dhp.actuatedJoints(1) == 0
+                joint = robotics.Joint('joint1', 'fixed');
+            else
+                joint = robotics.Joint('joint1', 'revolute');
+            end
+
+            joint.setFixedTransform(robot.dhp.data.mat(1,:),'dh');
+
+            body.Joint = joint;
+            robot.model.addBody(body, 'base');
+
+            % Create and Attach Subsequent Links:
+            for i = 2:robot.dof
+                body = robotics.RigidBody( strcat('body', num2str(i)) );
+                if robot.dhp.actuatedJoints(1) == 3
+                    joint = robotics.Joint( strcat('joint', num2str(i)), 'prismatic' );
+                elseif robot.dhp.actuatedJoints(1) == 0
+                    joint = robotics.Joint( strcat('joint', num2str(i)), 'fixed' );
+                else
+                    joint = robotics.Joint( strcat('joint', num2str(i)), 'revolute' );
+                end
+
+                joint.setFixedTransform(robot.dhp.data.mat(i,:),'dh');
+
+                body.Joint = joint;
+                robot.model.addBody( body, strcat('body', num2str(i-1)) );
+            end
+            
+            showdetails(robot.model);
         end % ctor
        
         % Returns the forward kinematic map for each frame, one for each 
         % link. Link i is given by frames(:,:,i), 
         % and the end effector frame is frames(:,:,end).
         function frames = forward_kinematics(robot, thetas)
-            if size(thetas, 2) ~= 1
-                error('Expecting a column vector of joint angles.');
-            end
-            
-            if size(thetas, 1) ~= robot.dof
-                error('Invalid number of joints: %d found, expecting %d', size(thetas, 1), robot.dof);
-            end
-            
             frames = zeros(4,4,robot.dof); % Set of homogeneous transforms to be populated
-
-            % Shorthand to Ease Reading:
-            ct = @(nn) cos(thetas(nn)); % Returns the cos of joint angle nn
-            st = @(nn) sin(thetas(nn)); % Returns the sin of joint angle nn
-            ca = @(nn) cos(robot.dhp.alphas(nn)); % Returns the cos of the DH alpha for frame nn
-            sa = @(nn) sin(robot.dhp.alphas(nn)); % Returns the sin of the DH alpha for frame nn
             
-            a = @(nn) robot.dhp.as(nn); % Returns the DH a offset for frame nn
-            d = @(nn) robot.dhp.ds(nn); % Returns the DH d offset for frame nn
+            % Get the DHP Data Package at the Given Joint Configuration:
+            dhpData = robot.dhp.atConfig(thetas);
             
-            % Compute frame for first joint (1st frame):
-            frames(:,:,1) = [...
-                ct(1), -st(1)*ca(1), st(1)*sa(1), a(1)*ct(1);...
-                st(1), ct(1)*ca(1), -ct(1)*sa(1), a(1)*st(1);...
-                0, sa(1), ca(1), d(1);...
-                0,0,0,1 ...
-            ];
+            % Set frame for first joint to the base transform:
+            frames(:,:,1) = DHP.transform(dhpData, 1);
+            
             i = 2;
             while(i <= robot.dof) % For each joint frame, i, and the tool frame
-                % Compute local DH transform (H_i^(i-1))
-                A = [...
-                    ct(i), -st(i)*ca(i), st(i)*sa(i), a(i)*ct(i);...
-                    st(i), ct(i)*ca(i), -ct(i)*sa(i), a(i)*st(i);...
-                    0, sa(i), ca(i), d(i);...
-                    0,0,0,1 ...
-                ];
-                frames(:,:,i) = frames(:,:,i-1) * A;
+                % Compute total DH transform H_(i-1)^0 * (H_i^(i-1)):
+                frames(:,:,i) = frames(:,:,i-1) * DHP.transform(dhpData, i);
             i = i+1;
             end
         end % #forward_kinematics
@@ -126,40 +151,16 @@ classdef Robot3D < handle
         % Returns the forward kinematic map for only the given frame, f.
         % More efficient if only a specific frame is needed.
         function frame = forward_kinematics_frame(robot, f, thetas)
-            if size(thetas, 2) ~= 1
-                error('Expecting a column vector of joint angles.');
-            end
+            % Get the DHP Data Package at the Given Joint Configuration:
+            dhpData = robot.dhp.atConfig(thetas);
             
-            if size(thetas, 1) ~= robot.dof
-                error('Invalid number of joints: %d found, expecting %d', size(thetas, 1), robot.dof);
-            end
-
-            % Shorthand to Ease Reading:
-            ct = @(nn) cos(thetas(nn)); % Returns the cos of joint angle nn
-            st = @(nn) sin(thetas(nn)); % Returns the sin of joint angle nn
-            ca = @(nn) cos(robot.dhp.alphas(nn)); % Returns the cos of the DH alpha for frame nn
-            sa = @(nn) sin(robot.dhp.alphas(nn)); % Returns the sin of the DH alpha for frame nn
+            % Set frame for first joint to the base transform:
+            frame = DHP.transform(dhpData, 1);
             
-            a = @(nn) robot.dhp.as(nn); % Returns the DH a offset for frame nn
-            d = @(nn) robot.dhp.ds(nn); % Returns the DH d offset for frame nn
-            
-            % Compute frame for first joint (1st frame):
-            frame = [...
-                ct(1), -st(1)*ca(1), st(1)*sa(1), a(1)*ct(1);...
-                st(1), ct(1)*ca(1), -ct(1)*sa(1), a(1)*st(1);...
-                0, sa(1), ca(1), d(1);...
-                0,0,0,1 ...
-            ];
             i = 2;
             while(i <= f) % For each joint frame, i, and the tool frame
-                % Compute local DH transform (H_i^(i-1))
-                A = [...
-                    ct(i), -st(i)*ca(i), st(i)*sa(i), a(i)*ct(i);...
-                    st(i), ct(i)*ca(i), -ct(i)*sa(i), a(i)*st(i);...
-                    0, sa(i), ca(i), d(i);...
-                    0,0,0,1 ...
-                ];
-                frame = frame * A;
+                % Compute local DH transform H_(i-1)^0 * (H_i^(i-1)):
+                frame = frame * DHP.transform(dhpData, i);
             i = i+1;
             end
         end % #forward_kinematics_frame
@@ -297,7 +298,45 @@ classdef Robot3D < handle
             ikd = inverse_kinematics_decoupled(robot, initial_thetas, goal_position, joint, idxs);
         end
     
-        % ** DEPRECATED **
+        % Visualizes the Robot as a RigidBodyTree in the Given Joint-Angle 
+        % Configuration, q.
+        function f = visualize(robot, q)
+            persistent fig boundary;
+            if isempty(fig) || ~ishandle(fig)
+                % Only setup figure once:
+                fig = figure();
+                
+                % Set Really Rough Bounding Box:
+                if isempty(boundary)
+                    maxExtent = robot.ee(zeros(robot.dof, 1));
+                    boundary = norm(maxExtent(1:3));
+                end
+                if boundary == 0
+                    % This shouldn't happen except in weird cases.
+                    boundary = sum(robot.dhp.data.as) + sum(robot.dhp.data.ds);
+                end
+                axis([-boundary,boundary,-boundary,boundary,-boundary,boundary])
+                axis off
+            end
+            figure(fig);
+            
+            if length(q) ~= robot.dof
+                error('Invalid Joint Configuration State. Vector should have as many cells as Robot DOF, which is %d.', robot.dof);
+            end
+            
+            % Create Config Structure Array:
+            cfg = robot.model.homeConfiguration();
+            for i = 1:robot.dof
+                cfg(i).JointPosition = q(i);
+            end
+            
+            % Plot Robot Body:
+            robot.model.show(cfg);
+            
+            f = fig;
+        end % #visualize
+        
+        % ** DEPRECATED ** Use #visualize instead.
         % Plot the robots frames for the given configuration on the given
         % figure (if given)
         function plot(robot, thetas, fig)

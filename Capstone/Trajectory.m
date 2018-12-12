@@ -105,13 +105,15 @@ classdef Trajectory < handle
                     plot3(pts(:,1), pts(:,2), pts(:,3), 'g');
                 end
                 
-                % Ensure Axes are Scaled Equally (bounding cube):
-                h = get(gca,'DataAspectRatio');
-                if h(3)==1
-                      set(gca,'DataAspectRatio',[1 1 1/max(h(1:2))])
-                else
-                      set(gca,'DataAspectRatio',[1 1 h(3)])
-                end
+            hold off
+                
+            % Ensure Axes are Scaled Equally (bounding cube):
+            h = get(gca,'DataAspectRatio');
+            if h(3)==1
+                  set(gca,'DataAspectRatio',[1 1 1/max(h(1:2))])
+            else
+                  set(gca,'DataAspectRatio',[1 1 h(3)])
+            end
 
         end % #plot_pts
     end % Methods

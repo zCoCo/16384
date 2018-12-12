@@ -30,8 +30,7 @@ for i = 1:size(theta,1) % For each timestep:
     
 % calculate end effector forces given joint torques
     Ts = torques(i,:)';
-    jacobians = robot.jacobians(ths); % All jacobians
-    Je = jacobians(:,:,end); % Jacobian to end effector
+    Je = robot.jacobianOf(robot.dof, ths); % Jacobian to end effector
     forces(i,:) = -pinv(Je') * Ts;
 end
 

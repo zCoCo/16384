@@ -7,16 +7,18 @@ classdef Robot3D < handle
     % states".
     
     properties (SetAccess = immutable)
-        dhp, %                  - DHP Data Object
-        dof, %                  - Robot's Degrees of Freedom
-        link_masses, %          - Mass of Each Robot Link
-        joint_masses, %         - Mass of Each Robot Joint
-        end_effector_mass, %    - Mass of Robot End Effector
+        dhp, %                      - DHP Data Object
+        dof, %                      - Robot's Degrees of Freedom
+        link_masses, %              - Mass of Each Robot Link
+        joint_masses, %             - Mass of Each Robot Joint
+        end_effector_mass, %        - Mass of Robot End Effector
         joint_limits = struct(... % - Boundary Limits on Each Joint
             'mins', [], ...
             'maxs', [] ...
         )
-        model %                 - RigidBodyTree Model of Robot for Visualization
+        model %                     - RigidBodyTree Model of Robot for Visualization
+        zero; %                     - Zero Vector of Length DOF
+        ones; %                     - Ones Vector of Length DOF
     end
     
     methods
@@ -31,6 +33,9 @@ classdef Robot3D < handle
             robot.dhp = DHP(dhpMat, actuatedJoints);
                 
             robot.dof = size(dhpMat, 1); % DH matrix also includes tool frame
+            % For later convenience:
+            robot.zero = zeros(robot.dof, 1);
+            robot.ones = ones(robot.dof, 1);
             
             % Initialize Joint Limits:
             if nargin > 2
@@ -207,7 +212,7 @@ classdef Robot3D < handle
         
         
         function jacobians = jacobians(robot, thetas)
-            % Returns the SE(3) Analytical Jacobian for each frame.
+            % Returns the SE(3) Geometric Jacobian for each frame.
 
             % Make sure that all the parameters are what we're expecting.
             % This helps catch typos and other lovely bugs.
@@ -241,6 +246,42 @@ classdef Robot3D < handle
             j = j + 1;
             end
         end % #jacobians
+        
+        function J = jacobianOf(robot, f, thetas)
+            % Returns the SE(3) Geometric Jacobian for the frame with
+            % index f (faster than #jacobians if only one J is needed).
+            % Because this calls fk on each call, it is still faster to 
+            % call jacobians if you need more than one or two jacobians for
+            % a computation.
+
+            % Make sure that all the parameters are what we're expecting.
+            % This helps catch typos and other lovely bugs.
+            if size(thetas, 1) ~= robot.dof || size(thetas, 2) ~= 1
+               error('Invalid thetas: Should be a column vector matching robot DOF count, is %dx%d.', size(thetas, 1), size(thetas, 2));
+            end
+
+            fk = robot.fk(thetas);
+            J = zeros(6,robot.dof);
+            
+            o_j = fk(1:3,4,f); % Position of target frame origin w.r.t. {0} = H*[0;0;0;1] 
+
+            % Create first column of jacobian for joint frame j:
+            z = [0;0;1]; % Orientation of z-axis for {0}
+            o = [0;0;0]; % Position of origin for {0}
+            J(1:3, 1) = cross(z, (o_j - o));
+            J(4:6, 1) = z;
+                
+            i = 2;
+            while(i <= robot.dof) % For each column of the jacobian, i
+                H = fk(:,:,i-1); % Homogenous transform to joint i-1
+                z = H(1:3,3); % Orientation of previous z-axis w.r.t. {0} = H*[0;0;1;0]
+                o = H(1:3,4); % Position of previous origin w.r.t. {0} = H*[0;0;0;1]
+
+                J(1:3, i) = cross(z, (o_j - o));
+                J(4:6, i) = z;
+            i = i + 1;
+            end
+        end % #jacobianOf
         
         function thetas = inverse_kinematics(robot, initial_thetas, goal_position)
             % Returns the joint angles which minimize a simple squared-distance

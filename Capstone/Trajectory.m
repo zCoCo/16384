@@ -286,6 +286,13 @@ classdef (Abstract) Trajectory < handle
                     plot3(pts(:,1), pts(:,2), pts(:,3), 'g');
                 end
                 
+                % Plot Tangents
+                for i = floor(linspace(1,obj.numPts, 50))
+                    pts = obj.points(i,:);
+                    pts(end+1,:) = pts(1,:) + L*obj.tangent(obj.dist(i));
+                    plot3(pts(:,1), pts(:,2), pts(:,3), 'r');
+                end
+                
             hold off
                 
             % Ensure Axes are Scaled Equally (bounding cube):

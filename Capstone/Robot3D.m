@@ -188,12 +188,12 @@ classdef Robot3D < handle
             z = H_0_i(3,4);
             
             if(H_0_i(1,1) == 0 || H_0_i(2,1) == 0)
-                yaw = atan2(R(1,2), R(2,2));
+                yaw = atan2(H_0_i(1,2), H_0_i(2,2));
                 pitch = pi/2;
                 roll = 0;
             else
                 yaw = atan2(H_0_i(3,2), H_0_i(3,3));
-                pitch = atan2(-H_0_i(3,1), sqrt(H_0_i(3,2)^2 + H_0_i(3,3)^2));
+                pitch = atan2(-H_0_i(3,1), sqrt(H_0_i(1,1)^2 + H_0_i(2,1)^2));
                 roll = atan2(H_0_i(2,1), H_0_i(1,1));
             end
            
@@ -341,7 +341,14 @@ classdef Robot3D < handle
                 c = D' * D;
             end
             
-            thetas = fmincon(@cost, initial_thetas, [],[],[],[], robot.joint_limits.mins, robot.joint_limits.maxs);
+            options = optimset( 'algorithm', {'levenberg-marquardt',.1}, ...
+                    'DerivativeCheck', 'off', ...
+                    'TolX', .002, ...
+                    'Display', 'off', ...
+                    'MaxIter', 100 );
+
+            thetas = lsqnonlin( @cost, initial_thetas, [], [], options );
+            %thetas = fmincon(@cost, initial_thetas, [],[],[],[], robot.joint_limits.mins, robot.joint_limits.maxs);
         end % #inverse_kinematics_decoupled
         
         % Shorthand for performing the decoupled inverse kinematics.

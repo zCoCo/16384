@@ -40,7 +40,7 @@ classdef DHP < handle
         % State Configuration.
         function cfgData = atConfig(dhp, cfg)
             if length(cfg) ~= size(dhp.data.mat, 1)
-                error('Invalid Joint Configuration State. Vector should have as many cells as rows in DHP matrix, which is %d.', size(dhp, 1));
+                error('Invalid Joint Configuration State. Vector should have as many cells as rows in DHP matrix, which is %d.', size(dhp.data.mat, 1));
             end
             cm = dhp.data.mat;
             

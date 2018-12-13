@@ -19,14 +19,14 @@ classdef JointTrajectory < handle
                 p = [traj_w.point(s)'; traj_w.RPY_s(s, 1,2)'];
         
                 % Use IK to Convert Target Position to Joint Configuration:
-                obj.jointPositions(:,i) = robot.ikd(last_q, p, robot.dof, [1,2,3,5]); % we don't care about rotation about the pointer x, yaw, idx 6.
+                obj.jointPositions(:,i) = robot.ikd(last_q, p, robot.dof, [1,2,3,4,5]); % we don't care about rotation about the pointer x, yaw, idx 6.
                 last_q = obj.jointPositions(:,i);
                 
                 % Compute Joint Velocities:
                 J = robot.jacobianOf(robot.dof, obj.jointPositions(:,i));
                 Lam = traj_w.RDot(s, 1,2) * traj_w.R(s, 1,2)'; % Skew Symmetric Rotation Matrix
                 omega = [Lam(3,2); Lam(1,3); Lam(2,1)];
-                obj.jointVels(:,i) = pinv(J)*[traj_w.velocity_s(s)'; omega]; % omega];
+                obj.jointVels(:,i) = pinv(J)*[traj_w.velocity_s(s)'; 0;0;0]; % omega];
                 fprintf('. . . %d / %d\n', i, size(traj_w.data.xs, 2));
             end
             

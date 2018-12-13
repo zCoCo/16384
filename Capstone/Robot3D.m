@@ -318,13 +318,13 @@ classdef Robot3D < handle
             
             function c = cost(q)
                 pe = robot.p(joint, q);
-                D = (pe-goal_position) .* [1;1;1;1/75;1/75;1/75];
+                D = (pe-goal_position) .* [1;1;1;1/65;1/50;1/50];
                 c = D(idxs)' * D(idxs);
             end
             
             options = optimset( 'algorithm', {'levenberg-marquardt',.1}, ...
                     'DerivativeCheck', 'off', ...
-                    'TolX', .002/500, ... % Low to prevent chugging at slow speeds
+                    'TolX', .002/750, ... % Low to prevent chugging at slow speeds
                     'Display', 'off', ...
                     'MaxIter', 500 );
 

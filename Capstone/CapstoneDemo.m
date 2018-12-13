@@ -2,7 +2,7 @@ function CapstoneDemo()
     %% Demo Parameters
    sim = true;
    useGravComp = false;
-   traj_file = 'sine.csv';
+   traj_file = 'straight.csv';
    if contains(traj_file, 'sine')
         home_position = [0.4202; 0.5585; 0.9409;0.1025;0.3524];
    else

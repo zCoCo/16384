@@ -2,7 +2,7 @@ function robotVisualizationTest()
     dhp = [...
         0,			pi/2,		116.23e-3,		0;		...
         327.76e-3,	pi,			0,				0;		...
-        0,          -pi/2,      0,				-pi/2;	...
+        0,          -pi/2,      0,				pi;		...
         270.0e-3,	pi/2,		94.05e-3,		-pi/2;	...
         266.70e-3,	pi/2,		57.40e-3,		0
     ];
@@ -16,7 +16,7 @@ function robotVisualizationTest()
             0       -pi/2	0   	0;
             0       0       0       0]; % Puma560(R) from matlab sample
     %}
-    actuatedJoints = 4 * ones(size(dhp,1),1);
+    actuatedJoints = 4 * ones(6);
     robot = Robot3D(dhp, actuatedJoints);
     
     q = zeros(robot.dof,1);
@@ -30,7 +30,7 @@ function robotVisualizationTest()
         scatter3(wps(:,1), wps(:,2), wps(:,3));
     hold off
     
-    pause;
+    pause(1);
     
     for i = 1:robot.dof
         for t = linspace(0,2*pi, 50)

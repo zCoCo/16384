@@ -4,6 +4,7 @@
 classdef RobotController < handle
     properties(SetAccess = immutable)
         robot; %                - Robot3D object being controlled
+        RobotHardware; %        - Close to the Metal Hebi Controller for Issuing Commands to the Robot
     end % immutable properties
     
     properties(SetAccess = private, GetAccess = public)
@@ -35,6 +36,18 @@ classdef RobotController < handle
         function rc = RobotController(rob)
             rc.robot = rob;
             rc.clock = Clock(); % Set Default Clock
+            
+            rc.RobotHardware =  HebiLookup.newGroupFromFamily('*');
+            gains_struct_wrapper = load('gains_file.mat'); %contains gains_struct
+            gains_struct = gains_struct_wrapper.gains_struct;
+
+            gains_struct.controlStrategy = 4 * rc.robot.ones;
+            gains_struct.positionKp = [0.75 3 2 2 2];
+            gains_struct.positionKi = [0.005 0 0 0 0];
+            gains_struct.positionKd = [0.005 0 0.03 0 0];
+            % display(gains_struct) will show you other fields you can modify
+            rc.RobotHardware.set('gains', gains_struct); % note this is the set function, not send
+
         end % ctor
         
         % Initializes Connection to Robot Hardware
@@ -64,10 +77,12 @@ classdef RobotController < handle
         function followTrajectory(rc, traj)
             
             if ~traj.data.precomputed
-                disp('Precomputing Trajectory. . .');
+                disp('Precomputing Workspace Trajectory. . .');
                 dt = traj.params.tcrit(end) / (500-1); % use 200pts
                 traj.precompute(dt);
             end
+            
+            %% PRECOMPUTE JOINT TRAJECTORY AND INTERP.
             
             disp('Executing Trajectory . . .');
             numCommands = 0; % Number of Times the Robot Trajectory has Been Updated
@@ -83,16 +98,19 @@ classdef RobotController < handle
 %                     rc.clock.pause();
 %                     rc.clock.resume(); % Break here for in-loop debugging
                 
+                % Compute Target Robot State:
+
                 rc.moveTo(traj.x_t(T));
                 rc.moveAt(traj.v_t(T));
                 rc.issueCommand();
+                numCommands = numCommands + 1;
+                
                 if rc.sim
                     % Replot Waypoints Ontop of Trajectory
                     hold on
                         scatter3(traj.points(:,1), traj.points(:,2), traj.points(:,3));
                     hold off
                 end
-                numCommands = numCommands + 1;
     
                 if(T > traj.data.ts(end))
                     done = 1;

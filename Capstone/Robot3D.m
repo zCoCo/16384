@@ -111,9 +111,9 @@ classdef Robot3D < handle
             % Create and Attach Subsequent Links:
             for i = 2:robot.dof
                 body = robotics.RigidBody( strcat('body', num2str(i)) );
-                if robot.dhp.actuatedJoints(1) == 3
+                if robot.dhp.actuatedJoints(i) == 3
                     joint = robotics.Joint( strcat('joint', num2str(i)), 'prismatic' );
-                elseif robot.dhp.actuatedJoints(1) == 0
+                elseif robot.dhp.actuatedJoints(i) == 0
                     joint = robotics.Joint( strcat('joint', num2str(i)), 'fixed' );
                 else
                     joint = robotics.Joint( strcat('joint', num2str(i)), 'revolute' );
@@ -368,7 +368,7 @@ classdef Robot3D < handle
             % Create Config Structure Array:
             cfg = robot.model.homeConfiguration();
             for i = 1:robot.dof
-                cfg(i).JointPosition = q(i);
+                cfg(i).JointPosition = q(i) + robot.dhp.data.mat(i, robot.dhp.actuatedJoints(i));
             end
             
             % Plot Robot Body:

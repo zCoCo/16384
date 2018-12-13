@@ -2,8 +2,12 @@ function CapstoneDemo()
     %% Demo Parameters
    sim = true;
    useGravComp = false;
-   traj_file = 'straight.csv';
-   home_position = [0.4202; 0.5585; 0.9409;0.1025;0.3524];
+   traj_file = 'sine.csv';
+   if contains(traj_file, 'sine')
+        home_position = [0.4202; 0.5585; 0.9409;0.1025;0.3524];
+   else
+       home_position = [0.5671; 0.3366; 1.469; 0.5551; -0.1556];
+   end
    speed = 10*0.005; % [m/s]
    offset_y = [0,25.4e-3,0]; % Push target points futher away so the arm goes fully through board
    offset_z = [0,0,0]; % Compensate for constant sag (primitive alternative to gravComp if it keeps freaking out).
@@ -19,7 +23,6 @@ function CapstoneDemo()
         266.70e-3,	pi/2,		54.23e-3,		0
     ];
     actuatedJoints = 4 * ones(size(dhp,1),1);
-    
     
     % Dynamics:
     gravity = -[0,0,9.81];%-[fbk.accelX(1) fbk.accelY(1) fbk.accelZ(1)] % Get gravity vector to Compensate if un-level (i/a)
@@ -89,19 +92,25 @@ function CapstoneDemo()
     figure();
     hold on
         for i = 1:robot.dof
+            dQdt = zeros(size(traj_j.jointPositions(i,:)));
+            dQ = diff(traj_j.jointPositions(i,:));
+            dt = diff(traj_j.times);
+            dQdt(1:end-1) = dQ ./ dt;
+            
             subplot(3,2,i);
             hold on
                 plot(traj_j.times, traj_j.jointPositions(i,:), 'b');
                 plot(traj_j.times, traj_j.jointVels(i,:), 'r');
+                plot(traj_j.times, dQdt, 'c');
                 title(strcat('Joint ', num2str(i)));
             hold off
         end
         % Put Legend in Last Slot in Grid:
         subplot(3,2,6);
         hold on
-            plot(0, 0, 'b'); plot(0, 0, 'r');
+            plot(0, 0, 'b'); plot(0, 0, 'r'); plot(0, 0, 'c');
         hold off
-        legend('Joint Position [rad]', 'Joint Velocity [rad/s]');
+        legend('Joint Position [rad]', 'Joint Velocity [rad/s]', 'Derivative of Joint Position [rad/s]');
     hold off
     
     %% Wait for Command:

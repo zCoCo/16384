@@ -14,7 +14,7 @@ classdef JointTrajectory < handle
             obj.jointPositions = zeros(robot.dof, traj_w.numPts);
             obj.jointVels = zeros(robot.dof, traj_w.numPts);
             last_q = starting_position;
-            for i = 1:size(traj_w.data.xs, 2)
+            for i = 1:size(traj_w.data.xs, 2) % Parameterize by distance not time to prevent jumping
                 s = traj_w.data.xs(i);
                 p = [traj_w.point(s)'; traj_w.RPY_s(s, 1,2)'];
         
@@ -26,7 +26,7 @@ classdef JointTrajectory < handle
                 J = robot.jacobianOf(robot.dof, obj.jointPositions(:,i));
                 Lam = traj_w.RDot(s, 1,2) * traj_w.R(s, 1,2)'; % Skew Symmetric Rotation Matrix
                 omega = [Lam(3,2); Lam(1,3); Lam(2,1)];
-                obj.jointVels(:,i) = pinv(J)*[traj_w.velocity_s(s)'; 0;0;0]; % omega];
+                obj.jointVels(:,i) = pinv(J)*[traj_w.velocity_s(s)'; omega]; % omega];
                 fprintf('. . . %d / %d\n', i, size(traj_w.data.xs, 2));
             end
             

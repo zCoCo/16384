@@ -228,7 +228,7 @@ classdef (Abstract) Trajectory < handle
         % Returns Rate of Change of Rotation Matrix at Position s
         function Rd = RDot(obj, s, naxis, taxis)
             if obj.dim ~= 3
-                error('#RPY works in SE(3) (3-Dimensional Space)');
+                error('#RDot only works in SE(3) (3-Dimensional Space)');
             end
             axes = [1,2,3];
             % Check Inputs:
@@ -264,7 +264,7 @@ classdef (Abstract) Trajectory < handle
         % Returns Desired Rotation Matrix at Position s
         function R = R(obj, s, naxis, taxis)
             if obj.dim ~= 3
-                error('#RPY works in SE(3) (3-Dimensional Space)');
+                error('#R only works in SE(3) (3-Dimensional Space)');
             end
             axes = [1,2,3];
             % Check Inputs:
@@ -299,7 +299,7 @@ classdef (Abstract) Trajectory < handle
         % naxis = 1, taxis = 2.
         function rpy = RPY_s(obj, s, naxis, taxis)
             if obj.dim ~= 3
-                error('#RPY works in SE(3) (3-Dimensional Space)');
+                error('#RPY only works in SE(3) (3-Dimensional Space)');
             end
             axes = [1,2,3];
             % Check Inputs:

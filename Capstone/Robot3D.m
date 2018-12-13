@@ -186,9 +186,16 @@ classdef Robot3D < handle
             x = H_0_i(1,4);
             y = H_0_i(2,4);
             z = H_0_i(3,4);
-            yaw = atan2(H_0_i(3,2), H_0_i(3,3));
-            pitch = atan2(-H_0_i(3,1), sqrt(H_0_i(3,2)^2 + H_0_i(3,3)^2));
-            roll = atan2(H_0_i(2,1), H_0_i(1,1));
+            
+            if(R(1,1) == 0 || R(2,1) == 0)
+                yaw = atan2(R(1,2), R(2,2));
+                pitch = pi/2;
+                roll = 0;
+            else
+                yaw = atan2(H_0_i(3,2), H_0_i(3,3));
+                pitch = atan2(-H_0_i(3,1), sqrt(H_0_i(3,2)^2 + H_0_i(3,3)^2));
+                roll = atan2(H_0_i(2,1), H_0_i(1,1));
+            end
            
             % Pack them up nicely.
             p = [x; y; z; roll; pitch; yaw];
@@ -315,7 +322,8 @@ classdef Robot3D < handle
         % indices, idxs. Additionally, this function can also perform IK
         % for complete non-decoupled systems where one or several dimension 
         % indices (ex. roll=4) doesn't matter.
-        function thetas = inverse_kinematics_decoupled(robot, initial_thetas, goal_position, joint, idxs)% Make sure that all the parameters are what we're expecting.
+        function thetas = inverse_kinematics_decoupled(robot, initial_thetas, goal_position, joint, idxs)
+            % Make sure that all the parameters are what we're expecting.
             % This helps catch typos and other lovely bugs.
             if size(initial_thetas, 1) ~= robot.dof || size(initial_thetas, 2) ~= 1
                 error('Invalid initial_thetas: Should be a column vector matching robot DOF count, is %dx%d.', size(initial_thetas, 1), size(initial_thetas, 2));

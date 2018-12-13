@@ -1,4 +1,4 @@
-function validate_DHP()
+function validate_IK_and_Trajectory()
     % Setup Robot:
     dhp = [...
         0,			pi/2,		116.23e-3,		0;		...
@@ -14,6 +14,18 @@ function validate_DHP()
     wps_w = csvread('DH_test_wps_w.csv'); % Workspace Waypoints
     wps_j = csvread('DH_test_wps_j.csv'); % Jointspace Waypoints
     log_w = []; % Log of Workspace Parameters Computed Using the DHP Matrix
+    
+    traj = CJT(wps, 1000, 10, 1000, 500);
+    
+    for s = linspace(0, traj.dist(end), 100)
+        p = [traj.position(s)'; traj.rpy(s, 1,2)'];
+        
+        i = round(s / traj.dist(end));
+        q0 = wps_j(i,:);
+        q = robot.ikd(q0, p, robot.dof, [1,2,3,4,5]); % we don't care about rotation about the pointer x, yaw, idx 6.
+        
+        robot.visua
+    end
     
     % Plot Path:
     for i = 1:size(wps_w, 1)
@@ -32,4 +44,4 @@ function validate_DHP()
     avgDiff = norm(sum(wps_w - log_w, 1) / size(wps_w, 1));
     fprintf('Average Deviation: %f\n', avgDiff);
     
-end % #validate_DHP
+end % #verify_DHP

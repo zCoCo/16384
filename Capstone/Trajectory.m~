@@ -23,12 +23,7 @@ classdef (Abstract) Trajectory < handle
     end % Properties
     
     methods
-        % Initializes Trajectory and Computes All Metadata.
-        % 
-        % NOTE: Since concavity can change the sign of normal vectors and
-        % cause discontinuities, use fixed point pf to ensure all normals 
-        % are pointing in the same direction, away from pf.
-        function obj = Trajectory(wps, pf)
+        function obj = Trajectory(wps)
             obj.points = wps;
             obj.numPts = size(obj.points,1);
             obj.dim = size(obj.points,2);
@@ -43,15 +38,6 @@ classdef (Abstract) Trajectory < handle
                     B = obj.points(i-1,:) - obj.points(i,:);
                     obj.normals(i,:) = cross(A,B);
                     obj.normals(i,:) = obj.normals(i,:) / norm(obj.normals(i,:)); % Normalize
-                    
-                    % Ensure Normals are Oriented Continuously (pointing
-                    % away from pf).
-                    pm = obj.points(i,:) - obj.normals(i,:);
-                    pp = obj.points(i,:) + obj.normals(i,:);
-                    if(norm(pm-pf) > norm(pp-pf))
-                        % Pick Direction of Normal which Brings o5 Closest to Origin:
-                        obj.normals(i,:) = -obj.normals(i,:);
-                    end
                 end
                 % Ensure Continuity with Endpoint Normals:
                 obj.normals(1,:) = obj.normals(2,:);
@@ -62,15 +48,6 @@ classdef (Abstract) Trajectory < handle
                     obj.normals(i,1) = -A(2);
                     obj.normals(i,2) = A(1);
                     obj.normals(i,:) = obj.normals(i,:) / norm(obj.normals(i,:)); % Normalize
-                    
-                    % Ensure Normals are Oriented Continuously (pointing
-                    % away from pf).
-                    pm = obj.points(i,:) - obj.normals(i,:);
-                    pp = obj.points(i,:) + obj.normals(i,:);
-                    if(norm(pm-pf) > norm(pp-pf))
-                        % Pick Direction of Normal which Brings o5 Closest to Origin:
-                        obj.normals(i,:) = -obj.normals(i,:);
-                    end
                 end
                 % Ensure Continuity with Endpoint Normals:
                 obj.normals(1,:) = obj.normals(2,:);
@@ -213,17 +190,15 @@ classdef (Abstract) Trajectory < handle
         end % #velocity_t
         
         % Computes the Roll, Pitch, and Yaw Angles Required to Achieve the
-        % Orientation Required at a Distance, s, along the Path. Returns as
-        % a 3x1 row vector of the angles in the order: roll, pitch, yaw.
+        % Orientation Required at a Distance, s, along the Path.
         %
+        % NOTE: Since concavity can change the sign of normal direction, use fixed 
+        % point pf to ensure all normals are point in the same 
         % NOTE: naxis and taxis specify which frame axes get rotated into
         % the normal and tangent vectors. Eg. if x is supposed to point
         % along the normal and y is supposed to point along the tangent,
         % naxis = 1, taxis = 2.
-        function rpy = RPY_s(obj, s, naxis, taxis)
-            if obj.dim ~= 3
-                error('#RPY works in SE(3) (3-Dimensional Space)');
-            end
+        function rpy = RPY_s(obj, s, pf, naxis, taxis)
             axes = [1,2,3];
             % Check Inputs:
             if prod(axes~=naxis) || prod(axes~=taxis)
@@ -242,21 +217,13 @@ classdef (Abstract) Trajectory < handle
             aaxis = axes(axes~=naxis & axes~=taxis);
             
             % Construct Rotation Matrix:
-            R(:,naxis) = n;
-            R(:,taxis) = t;
-            R(:,aaxis) = a;
+            R = zeros(3);
+            R(:,naxis) = n';
+            R(:,taxis) = t';
+            R(:,aaxis) = a';
             
-            if(R(1,1) == 0 || R(2,1) == 0)
-                yaw = atan2(R(1,2), R(2,2));
-                pitch = pi/2;
-                roll = 0;
-            else
-                yaw = atan2(R(3,2), R(3,3));
-                pitch = atan2(-R(3,1), sqrt(R(1,1)^2 + R(2,1)^2));
-                roll = atan2(R(2,1), R(1,1));
-            end
-            
-            rpy = [roll, pitch, yaw];
+            axes = [1,2,3];
+            aaxis = 
         end % #RPY_s
         % Shorthand for RPY(s_t(t)):
         function rpy = RPY_t(obj,t)

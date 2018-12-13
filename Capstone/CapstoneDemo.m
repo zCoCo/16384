@@ -38,7 +38,7 @@ function CapstoneDemo()
     x0 = robot.ee(rc.currState.q);
     wps = [x0(1:3); x0(1:3); x0(1:3); wps];
     % Initialize Workspace Trajectory:
-    traj_w = CJT(wps, 1000, 10, 1000, 250);
+    traj_w = CJT(wps, [0,0,0], 1000, 10, 1000, 500);
     
     % Compute Joint Trajectory from WorkspaceTrajectory:
     disp('Precomputing Jointspace Trajectory. . .'), beep;

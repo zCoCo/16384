@@ -45,8 +45,8 @@ classdef RobotController < handle
             HebiLookup.clearGroups();
             pause(3);
             
-            robotHardware = HebiLookup.newGroupFromNames('Robot B',{'J1','J2', 'J3', 'J4', 'J5'});
-            robotHardware.setCommandLifetime(2);
+            rc.robotHardware = HebiLookup.newGroupFromNames('Robot B',{'J1','J2', 'J3', 'J4', 'J5'});
+            rc.robotHardware.setCommandLifetime(2);
             
             gains_struct_wrapper = load('gains_file.mat'); %contains gains_struct
             gains_struct = gains_struct_wrapper.gains_struct;

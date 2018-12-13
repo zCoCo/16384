@@ -8,17 +8,6 @@ classdef CJT < Trajectory
         amax; %     Maximum Allowable Acceleration
         vmax; %     Maximum Allowable Velocity
         
-        % Precomputed Trajectory Path Data:
-        data = struct( ...
-            'precomputed', false, ... % Whether Data has been Precomputed
-            'timestep', 0, ... %          Timestep for Precomputed Data 
-            'ts', [], ... %             Timestamps for Each Data Point
-            'xs', [], ... %             Positions along Path at Each Timestamp
-            'vs', [], ... %             Velocities along Path at Each Timestamp
-            'as', [], ... %             Accelerations along Path at Each Timestamp
-            'js', [] ... %              Jerk along Path at Each Timestamp
-        );
-    
         % Parameters Defining Trajectory Curve:
         %{
         Relevant Critical Points:
@@ -49,8 +38,12 @@ classdef CJT < Trajectory
         % acceleration, jerk, and velocity. Optionally precomputes data
         % for x, v, a, j across the entire path if a number of points,
         % npts, is given
-        function obj = CJT(wps, jm, am, vm, npts)
-            obj = obj@Trajectory(wps); % Call Superclass ctor
+        % 
+        % NOTE: Since concavity can change the sign of normal vectors and
+        % cause discontinuities, use fixed point pf to ensure all normals 
+        % are pointing in the same direction, away from pf.
+        function obj = CJT(wps, pf, jm, am, vm, npts)
+            obj = obj@Trajectory(wps, pf); % Call Superclass ctor
             
             obj.jmax = jm;
             obj.amax = am;
@@ -58,53 +51,12 @@ classdef CJT < Trajectory
             
             obj.generateTrajectoryParameters();
             
-            if nargin > 4
+            if nargin > 5
                 if npts == 1; npts = 2; end
                 dt = obj.params.tcrit(end) / (npts-1);
                 obj.precompute(dt);
             end
         end % ctor
-        
-        % Precomputes and Stores All Trajectory Information using the Given
-        % dt.
-        function precompute(obj, dt)
-            obj.data.timestep = dt;
-            Tf = obj.params.tcrit(end);
-            % If Tf is not clean multiple of dt, add one extra data point
-            % at end, exactly at Tf.
-            N = Tf/dt;
-            N = floor(N) + ceil(N - floor(N));
-            
-            % Pre-allocate Data:
-            obj.data.ts = zeros(1,N);
-            obj.data.xs = zeros(1,N);
-            obj.data.vs = zeros(1,N);
-            obj.data.as = zeros(1,N);
-            obj.data.js = zeros(1,N);
-            
-            t = 0;
-            i = 1;
-            while(t < Tf)
-                obj.data.ts(i) = t;
-                obj.data.xs(i) = obj.s_t(t);
-                obj.data.vs(i) = obj.v_t(t);
-                obj.data.as(i) = obj.a_t(t);
-                obj.data.js(i) = obj.j_t(t);
-                
-                i = i+1;
-                t = t+dt;
-            end
-            % Add final point at T if dt doesn't go cleanly into Tf.
-            if i == N
-                obj.data.ts(i) = Tf;
-                obj.data.xs(i) = obj.s_t(Tf);
-                obj.data.vs(i) = obj.v_t(Tf);
-                obj.data.as(i) = obj.a_t(Tf);
-                obj.data.js(i) = obj.j_t(Tf);
-            end
-            
-            obj.data.precomputed = true;
-        end % #precompute
         
         % Determine All Key Parameters for the Trajectory:
         function generateTrajectoryParameters(obj)
@@ -177,6 +129,7 @@ classdef CJT < Trajectory
                 2*(tc + thold) - tr, ... % End of Decelerating Linear Velocity Region
                 2*(tc + thold) ... % End of Decelerating Concave Velocity Region
             ];
+            obj.duration = obj.params.tcrit(end);
             sdecel = (obj.dist(end) - sc); % Path Position where Deceleration Begins
             obj.params.xcrit = [...
                 ap*tr^2 / 6, ...
@@ -188,43 +141,6 @@ classdef CJT < Trajectory
                 sdecel + sc;
             ];
         end % #generateTrajectoryParameters
-        
-        %% Useful Trajectory Data:
-        
-        % Returns the Interpolated Point at the Given Time into the
-        % Trajectory Execution
-        function p = point_t(obj,t)
-            p = point(obj.s_t(t));
-        end % #point_t
-        
-        % Returns the Interpolated Trajectory Normal at the Given Time into
-        % the Trajectory Execution
-        function n = normal_t(obj,t)
-            n = normal(obj.s_t(t));
-        end % #normal_t
-        
-        % Returns the Interpolated Trajectory Velocity Vector at the 
-        % Given Distance along the Trajectory Path with sampling resolution
-        % res (optional)
-        function v = velocity_s(obj, s, res)
-            if(dist < 0)
-                v = zeros(size(obj.points(1,:)));
-            elseif(dist > obj.dist(end))
-                v = zeros(size(obj.points(1,:)));
-            else
-                v = obj.v_s(s) * obj.tangent(s,res); % Magnitude * tangent vector
-            end
-        end % #velocity_s
-        
-        % Returns the Interpolated Trajectory Velocity Vector at the Given 
-        % Time into the Trajectory Execution
-        function v = velocity_t(obj, t, res)
-            if nargin > 2
-                v = obj.velocity_s(obj.s_t(t));
-            else
-                v = obj.velocity_s(obj.s_t(t),res);
-            end
-        end % #velocity_t
         
         %% Get Position-Parameterized Data:
         function t = t_s(obj,s)
@@ -408,27 +324,5 @@ classdef CJT < Trajectory
                 end
             end
         end % #j_t
-        
-        % Plots the Time-Parameterized Curves of the Trajectory
-        function plot_t(obj)
-            hold on
-                plot(obj.data.ts, obj.data.xs, 'r');
-                plot(obj.data.ts, obj.data.vs, 'g');
-                plot(obj.data.ts, obj.data.as, 'k');
-            hold off
-            xlabel('Time [s]');
-            legend('Position', 'Velocity', 'Acceleration');
-        end
-        
-        % Plots the Position-Parameterized Curves of the Trajectory
-        function plot_s(obj)
-            hold on
-                plot(obj.data.xs, obj.data.ts, 'r');
-                plot(obj.data.xs, obj.data.vs, 'g');
-                plot(obj.data.xs, obj.data.as, 'k');
-            hold off
-            xlabel('Path Position [units]');
-            legend('Time Elapsed', 'Velocity', 'Acceleration');
-        end
     end
 end % Class CJT

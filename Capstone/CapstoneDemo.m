@@ -2,10 +2,11 @@ function CapstoneDemo()
     %% Demo Parameters
    sim = true;
    useGravComp = false;
-   traj_file = 'sine.csv';
+   traj_file = 'straight.csv';
    home_position = [0.4202; 0.5585; 0.9409;0.1025;0.3524];
-   speed = 0.005; % [m/s]
-   offset_x = [0,0,0]; % Push target points futher away so 
+   speed = 10*0.005; % [m/s]
+   offset_y = [0,25.4e-3,0]; % Push target points futher away so the arm goes fully through board
+   offset_z = [0,0,0]; % Compensate for constant sag (primitive alternative to gravComp if it keeps freaking out).
    
     %% Initialize Robot and Controller:
     disp('Initializing Robot and Controller. . .'), beep;
@@ -54,6 +55,9 @@ function CapstoneDemo()
     % Compute Workspace Trajectory from Waypoint File:
     disp('Precomputing Workspace Trajectory . . .'), beep;
     wps = csvread(traj_file); % Get Waypoints from file
+    
+    % Apply Desired Offset to All Points:
+    wps = wps + offset_y + offset_z;
     
     % Prepend Current Position from Feedback for Continuity and "warm start" to IK:
     rc.updateState();

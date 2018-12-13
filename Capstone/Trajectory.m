@@ -212,6 +212,70 @@ classdef (Abstract) Trajectory < handle
             end
         end % #velocity_t
         
+        % Returns Rate of Change of Rotation Matrix at Position s
+        function Rd = RDot(obj, s, naxis, taxis)
+            if obj.dim ~= 3
+                error('#RPY works in SE(3) (3-Dimensional Space)');
+            end
+            axes = [1,2,3];
+            % Check Inputs:
+            if prod(axes~=naxis) || prod(axes~=taxis)
+                error('naxis and taxis must be 1, 2, or 3');
+            end
+            if naxis == taxis
+                error('naxis and taxis must be different axes');
+            end
+            % Figure out which axis is undeclared
+            aaxis = axes(axes~=naxis & axes~=taxis);
+            
+            % Compute Axis Derivatives:
+            dt = obj.data.timestep;
+            ntp = obj.normal_t(t_s(s)+dt);
+            nt = obj.normal_t(t_s(s));
+            
+            ttp = obj.tangent_t(t_s(s)+dt);
+            tt = obj.tangent_t(t_s(s));
+            
+            atp = cross(ntp,ttp);
+            at = cross(nt,tt);
+            
+            dndt = (ntp - nt) ./ dt;
+            dtdt = (ttp - tt) ./ dt;
+            dadt = (atp - at) ./ dt;
+            
+            Rd(:, naxis) = dndt;
+            Rd(:, taxis) = dtdt;
+            Rd(:, aaxis) = dadt;
+        end % #RDot
+        
+        % Returns Desired Rotation Matrix at Position s
+        function R = R(obj, s, naxis, taxis)
+            if obj.dim ~= 3
+                error('#RPY works in SE(3) (3-Dimensional Space)');
+            end
+            axes = [1,2,3];
+            % Check Inputs:
+            if prod(axes~=naxis) || prod(axes~=taxis)
+                error('naxis and taxis must be 1, 2, or 3');
+            end
+            if naxis == taxis
+                error('naxis and taxis must be different axes');
+            end
+                
+            % Construct all Three Vectors:
+            n = obj.normal(s);
+            t = obj.tangent(s);
+            a = cross(n,t);
+            
+            % Figure out which axis is undeclared
+            aaxis = axes(axes~=naxis & axes~=taxis);
+            
+            % Construct Rotation Matrix:
+            R(:,naxis) = n;
+            R(:,taxis) = t;
+            R(:,aaxis) = a;
+        end % #RDot
+        
         % Computes the Roll, Pitch, and Yaw Angles Required to Achieve the
         % Orientation Required at a Distance, s, along the Path. Returns as
         % a 3x1 row vector of the angles in the order: roll, pitch, yaw.

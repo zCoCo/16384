@@ -16,7 +16,7 @@ function CapstoneDemo()
     % Dynamics:
     gravity = -[0,0,9.81];%-[fbk.accelX(1) fbk.accelY(1) fbk.accelZ(1)] % Get gravity vector to Compensate for being un-level (i/a)
     
-    robot = Robot3D(dhp, actuatedJoints, gravity);
+    robot = Robot3D(dhp, actuatedJoints);
     rc = RobotController(robot);
         rc.sim = true; % Still Simulating...
     

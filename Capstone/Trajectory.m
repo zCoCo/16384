@@ -86,7 +86,7 @@ classdef Trajectory < handle
         function plot_pts(obj)
             hold on
                 % Lines between Points:
-                plot3(obj.points(:,1), obj.points(:,2), obj.points(:,3), 'b');
+                %plot3(obj.points(:,1), obj.points(:,2), obj.points(:,3), 'b');
                 % Each Point:
                 scatter3(obj.points(:,1), obj.points(:,2), obj.points(:,3));
                 

@@ -54,7 +54,7 @@ function CapstoneDemo()
         function x = p_s_x(s); p = traj_w.point(s); x = p(1); end % sloppy but it works and speed doesn't matter here.
         function y = p_s_y(s); p = traj_w.point(s); y = p(2); end
         function z = p_s_z(s); p = traj_w.point(s); z = p(3); end
-        fplot3(p_s_x, p_s_y, p_s_z, [0, traj_w.dist(end)]);
+        fplot3(@p_s_x, @p_s_y, @p_s_z, [0, traj_w.dist(end)]);
     hold off
     
     %% Wait for Command:

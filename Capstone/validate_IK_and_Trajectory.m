@@ -11,13 +11,15 @@ function validate_IK_and_Trajectory()
     robot = Robot3D(dhp, actuatedJoints);
     
     % Fetch Data:
-    wps_w = csvread('DH_test_wps_w.csv'); % Workspace Waypoints
+    wps_w = csvread('DH_test_wps_w.csv') - [0, -0.1, 0]; % Workspace Waypoints
     wps_j = csvread('DH_test_wps_j.csv'); % Jointspace Waypoints
     log_w = []; % Log of Workspace Parameters Computed Using the DHP Matrix
     
     traj = CJT(wps_w, [0,0,0], 1000, 10, 1000, 500);
     
     last_q = wps_j(1,:)'; % Kickstart IK.
+    numUpdates = 0; % Number of Times Logging has been updated
+    diffSum = 0; % Sum of differences between target and result.
     for s = linspace(0, traj.dist(end), 100)
         % Get Target Workspace Position:
         p = [traj.point(s)'; traj.RPY_s(s, 1,2)'];
@@ -30,6 +32,10 @@ function validate_IK_and_Trajectory()
         X = robot.ee(q);
         log_w(end+1, :) = X(1:3);
         
+        % Update Data Logging:
+        diffSum = diffSum + norm(p-X);
+        numUpdates = numUpdates + 1;
+        
         robot.visualize(q);
         hold on
             scatter3(wps_w(:,1), wps_w(:,2), wps_w(:,3));
@@ -39,7 +45,15 @@ function validate_IK_and_Trajectory()
     end
 
     % Report Findings:
-    avgDiff = norm(sum(wps_w - log_w, 1) / size(wps_w, 1));
+    avgDiff = diffSum / numUpdates;
     fprintf('Average Deviation: %f\n', avgDiff);
+    
+    hold on
+        % Workspace Trajectory (including any interpolation errors):
+        function x = p_s_x(s); pp = traj.point(s); x = pp(1); end % sloppy but it works and speed doesn't matter here.
+        function y = p_s_y(s); pp = traj.point(s); y = pp(2); end
+        function z = p_s_z(s); pp = traj.point(s); z = pp(3); end
+        fplot3(@p_s_x, @p_s_y, @p_s_z, [0, traj.dist(end)]);
+    hold off
     
 end % #validate_IK_and_Trajectory

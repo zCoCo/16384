@@ -206,7 +206,6 @@ classdef Robot3D < handle
             p = robot.position(idx, thetas);
         end
         
-        
         % Returns position for the end effector given a set of joint
         % angles.
         function ee = end_effector(robot, thetas)
@@ -333,12 +332,10 @@ classdef Robot3D < handle
                 error('Invalid goal_position: Should be a 6 length column vector, is %dx%d.', size(goal_position, 1), size(goal_position, 2));
             end
             
-            disp('1');
-            
             function c = cost(q)
                 pe = robot.p(joint, q);
-                D = pe(idxs)-goal_position(idxs);
-                c = D' * D;
+                D = (pe-goal_position) .* [1;1;1;1/100;1/50;1/50];
+                c = D(idxs)' * D(idxs);
             end
             
             options = optimset( 'algorithm', {'levenberg-marquardt',.1}, ...

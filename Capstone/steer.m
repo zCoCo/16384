@@ -21,7 +21,7 @@ function steer()
     function y = p_s_y(s); pp = traj.point(s); y = pp(2); end
     function z = p_s_z(s); pp = traj.point(s); z = pp(3); end
     
-    q = [-0.25; pi/3; pi/3; -0.1; 0];%[-70;25;15;90;0;90] * pi/180;
+    q = [0.4202; 0.5585; 0.9409;0.1025;0.3524];%[-70;25;15;90;0;90] * pi/180;
     j = 1;
 
     function keyPress(~, e)

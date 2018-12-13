@@ -4,7 +4,7 @@ function validate_IK_and_Trajectory()
         0,			pi/2,		116.23e-3,		0;		...
         327.76e-3,	pi,			0,				0;		...
         0,          -pi/2,      2.5e-3,			-pi/2;	...
-        270.0e-3,	pi/2,		94.05e-3,		-pi/2;	...
+        254.10e-3,	pi/2,		94.05e-3,		-pi/2;	...
         266.70e-3,	pi/2,		54.23e-3,		0
     ];
     actuatedJoints = 4 * ones(size(dhp,1),1);
@@ -15,9 +15,9 @@ function validate_IK_and_Trajectory()
     %wps_j = csvread('DH_test_wps_j.csv'); % Jointspace Waypoints
     log_w = []; % Log of Workspace Parameters Computed Using the DHP Matrix
     
-    traj = CJT(wps_w, [0,0,0], 1000, 10, 1000, 500);
+    traj = CJT(wps_w, [0,0,0], 1000, 10, 2, 500);
     
-    last_q = [-0.25; pi/3; pi/3; -0.1; 0];%wps_j(1,:)'; % Kickstart IK.
+    last_q = [0.4202; 0.5585; 0.9409;0.1025;0.3524];%[-0.25; pi/3; pi/3; -0.1; 0];%wps_j(1,:)'; % Kickstart IK.
     numUpdates = 0; % Number of Times Logging has been updated
     diffSum = 0; % Sum of differences between target and result.
     for s = linspace(0, traj.dist(end), 100)
@@ -25,7 +25,7 @@ function validate_IK_and_Trajectory()
         p = [traj.point(s)'; traj.RPY_s(s, 1,2)'];
         
         % Use IK to Convert Target Position to Joint Configuration:
-        q = robot.ikd(last_q, p, robot.dof, [1,2,3]); % we don't care about rotation about the pointer x, yaw, idx 6.
+        q = robot.ikd(last_q, p, robot.dof, [1,2,3,5]); % we don't care about rotation about the pointer x, yaw, idx 6.
         last_q = q;
         
         % Convert Joint Configuration Back to Workspace Position:
@@ -34,7 +34,7 @@ function validate_IK_and_Trajectory()
         
         % Update Data Logging:
         diffSum = diffSum + norm(p-X);
-        numUpdates = numUpdates + 1;
+        numUpdates = numUpdates + 1
         
         robot.visualize(q);
         hold on

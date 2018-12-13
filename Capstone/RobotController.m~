@@ -2,9 +2,11 @@
 % either managing connection to and control of real hardware (Hebi
 % actuators) or running a VisualizeRobotics (VR) simulation.
 classdef RobotController < handle
-    properties(SetAccess = immutable)
+    properties
         robot; %                - Robot3D object being controlled
-        RobotHardware; %        - Close to the Metal Hebi Controller for Issuing Commands to the Robot
+        robotHardware; %        - Close to the Metal Hebi Controller for Issuing Commands to the Robot
+        cmd;
+        fbk;
     end % immutable properties
     
     properties(SetAccess = private, GetAccess = public)
@@ -36,24 +38,36 @@ classdef RobotController < handle
         function rc = RobotController(rob)
             rc.robot = rob;
             rc.clock = Clock(); % Set Default Clock
-            
-            rc.RobotHardware =  HebiLookup.newGroupFromFamily('*');
-            gains_struct_wrapper = load('gains_file.mat'); %contains gains_struct
-            gains_struct = gains_struct_wrapper.gains_struct;
-
-            gains_struct 
-            gains_struct.positionKp = [0.75 3 2 2 2];         
-            gains_struct.positionKi = [0.005 0 0 0 0];     
-            gains_struct.positionKd = [0.005 0 0 0 0]; 
-            % display(gains_struct) will show you other fields you can modify
-            rc.RobotHardware.set('gains', gains_struct); % note this is the set function, not send
-
         end % ctor
         
         % Initializes Connection to Robot Hardware
         function initializeHardwareConnection(rc)
-            warning('#initializeHardwareConnection Not Implemented for Robot Hardware');
-            % @TODO
+            HebiLookup.setLookupAddresses('*');
+            HebiLookup.clearModuleList();
+            HebiLookup.clearGroups();
+            pause(3);
+            
+            rc.robotHardware = HebiLookup.newGroupFromNames('Robot B',{'J1','J2', 'J3', 'J4', 'J5'});
+            rc.robotHardware.setCommandLifetime(2);
+            
+            rc.cmd = CommandStruct();
+            rc.fbk = rc.robotHardware.getNextFeedback();
+            
+            gains = load('robotA_gains.mat'); %contains gains_struct
+
+            %{
+            gains.velocityKi = zeros(1,5);
+            gains.velocityKd = 0.25*ones(1,5);
+            gains.velocityIClamp = 0.25*ones(1,5);
+            gains.torqueKp = 0.25*ones(1,5);
+            gains.torqueKi = zeros(1,5);
+            gains.torqueKd = 0.001*ones(1,5);
+            gains.positionKp = [1 15 2 2 2];
+            gains.positionKi = [0.005 1 1 0 0];
+            gains.positionKd = [0.005 0 0.03 0 0];
+            %}
+            % display(gains_struct) will show you other fields you can modify
+            rc.robotHardware.set('gains', gains.gains_struct); % note this is the set function, not send
         end % #initializeHardwareConnection
         
         % Updates the Robot's State from Feedback
@@ -61,30 +75,23 @@ classdef RobotController < handle
             if rc.sim
                 if isempty(rc.currState.q)
                     home = rc.robot.model.homeConfiguration;
-                    rc.currState = [home(:).JointPosition];
+                    rc.currState.q = [home(:).JointPosition];
                 else
                     rc.currState.q = rc.commState.q;
                     rc.currState.v = rc.commState.v;
                     rc.currState.t = rc.commState.t;
                 end    
             else
-                warning('#updateState Not Implemented for Robot Hardware');
+                rc.fbk = rc.robotHardware.getNextFeedback();
+                rc.currState.q = rc.fbk.position';
+                rc.currState.v = rc.fbk.velocity';
+                rc.currState.t = rc.fbk.torque';
                 % @TODO
             end
         end % #updateState
         
         % Follows the Given Trajectory
-        function followTrajectory(rc, traj)
-            
-            if ~traj.data.precomputed
-                disp('Precomputing Workspace Trajectory. . .');
-                dt = traj.params.tcrit(end) / (500-1); % use 200pts
-                traj.precompute(dt);
-            end
-            
-            %% PRECOMPUTE JOINT TRAJECTORY AND INTERP.
-            
-            disp('Executing Trajectory . . .');
+        function followJointTrajectory(rc, traj, traj_w)
             numCommands = 0; % Number of Times the Robot Trajectory has Been Updated
             first_loop = 1;
             done = 0;
@@ -99,34 +106,35 @@ classdef RobotController < handle
 %                     rc.clock.resume(); % Break here for in-loop debugging
                 
                 % Compute Target Robot State:
-
-                rc.moveTo(traj.x_t(T));
-                rc.moveAt(traj.v_t(T));
+                rc.command.sent = false;
+                rc.command.q = traj.position_t(T);
+                rc.command.v = traj.velocity_t(T);
                 rc.issueCommand();
+                
                 numCommands = numCommands + 1;
                 
                 if rc.sim
-                    % Replot Waypoints Ontop of Trajectory
+                    % Replot Waypoints On Top of Trajectory
                     hold on
-                        scatter3(traj.points(:,1), traj.points(:,2), traj.points(:,3));
+                        scatter3(traj_w.points(:,1), traj_w.points(:,2), traj_w.points(:,3));
                     hold off
                 end
     
-                if(T > traj.data.ts(end))
+                if(T > traj.times(end))
                     done = 1;
                     % Stop Immediately:
-                    rc.moveTo(traj.data.xs(end));
-                    rc.command.v = rc.robot.zeros;
+                    rc.command.q = traj.jointPositions(:,end);
+                    rc.command.v = traj.jointVels(:,end);
                     rc.command.sent = false;
                     rc.issueCommand();
                 else
-                    pause(0.025); % CPU Relief
+                    pause(0.01); % CPU Relief
                 end
             end % ~done?
             
             finTime = rc.clock.time();
             disp('Trajectory Completed');
-            disp('Avg. Cycle Time / Latency: %f', finTime / numCommands);
+            fprintf('Avg. Cycle Time / Latency: %f\n', finTime / numCommands);
         end % #followTrajectory
         
         % Sends the Current Command to the Robot
@@ -134,14 +142,20 @@ classdef RobotController < handle
             if ~rc.command.sent
                 if rc.sim
                     if ~isempty(rc.command.q)
-                        rc.robot.visualize(q);
+                        rc.robot.visualize(rc.command.q);
                     end
                 else
-                    warning('#issueCommand Not Implemented for Robot Hardware');
-                    % @TODO
+                    rc.cmd.position = rc.command.q(:,1)'; % transpose turns column into row vector for commands
+                    if ~isempty(rc.command.v)
+                        %rc.cmd.velocity = rc.command.v'; % transpose turns column into row vector for commands
+                    end
+                    rc.robotHardware.set(rc.cmd);
                 end
                 
                 rc.command.sent = true;
+                rc.commState.q = rc.command.q;
+                rc.commState.v = rc.command.v;
+                rc.commState.t = rc.command.t;
             end
         end % #issueCommand
         

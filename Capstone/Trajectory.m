@@ -52,6 +52,9 @@ classdef (Abstract) Trajectory < handle
                         % Pick Direction of Normal which Brings o5 Closest to Origin:
                         obj.normals(i,:) = -obj.normals(i,:);
                     end
+                    if sum(isnan(obj.normals(i,:)))
+                        obj.normals(i,:) = [0 1 0];
+                    end
                 end
                 % Ensure Continuity with Endpoint Normals:
                 obj.normals(1,:) = obj.normals(2,:);
@@ -146,7 +149,7 @@ classdef (Abstract) Trajectory < handle
         % Returns the Interpolated Point at the Given Time into the
         % Trajectory Execution
         function p = point_t(obj,t)
-            p = point(obj.s_t(t));
+            p = obj.point(obj.s_t(t));
         end % #point_t
         
         % Returns the Interpolated Trajectory Normal at the Given Distance
@@ -167,7 +170,7 @@ classdef (Abstract) Trajectory < handle
         % Returns the Interpolated Trajectory Normal at the Given Time into
         % the Trajectory Execution
         function n = normal_t(obj,t)
-            n = normal(obj.s_t(t));
+            n = obj.normal(obj.s_t(t));
         end % #normal_t
         
         % Returns the Interpolated Trajectory Tangent at the Given Distance
@@ -189,6 +192,12 @@ classdef (Abstract) Trajectory < handle
             t = t / norm(t); % Direction of Velocity Vector
         end % #tangent
         
+        % Returns the Interpolated Trajectory Normal at the Given Time into
+        % the Trajectory Execution
+        function n = tangent_t(obj,t)
+            n = obj.tangent(obj.s_t(t));
+        end % #normal_t
+        
         % Returns the Interpolated Trajectory Velocity Vector at the 
         % Given Distance along the Trajectory Path with sampling resolution
         % res (optional)
@@ -198,7 +207,11 @@ classdef (Abstract) Trajectory < handle
             elseif(s > obj.dist(end))
                 v = zeros(size(obj.points(1,:)));
             else
-                v = obj.v_s(s) * obj.tangent(s,res); % Magnitude * tangent vector
+                if nargin > 2
+                    v = obj.v_s(s) * obj.tangent(s,res); % Magnitude * tangent vector
+                else
+                    v = obj.v_s(s) * obj.tangent(s); % Magnitude * tangent vector
+                end
             end
         end % #velocity_s
         
@@ -230,11 +243,11 @@ classdef (Abstract) Trajectory < handle
             
             % Compute Axis Derivatives:
             dt = obj.data.timestep;
-            ntp = obj.normal_t(t_s(s)+dt);
-            nt = obj.normal_t(t_s(s));
+            ntp = obj.normal_t(obj.t_s(s)+dt);
+            nt = obj.normal_t(obj.t_s(s));
             
-            ttp = obj.tangent_t(t_s(s)+dt);
-            tt = obj.tangent_t(t_s(s));
+            ttp = obj.tangent_t(obj.t_s(s)+dt);
+            tt = obj.tangent_t(obj.t_s(s));
             
             atp = cross(ntp,ttp);
             at = cross(nt,tt);
@@ -358,14 +371,6 @@ classdef (Abstract) Trajectory < handle
                 end
                 
             hold off
-                
-            % Ensure Axes are Scaled Equally (bounding cube):
-            h = get(gca,'DataAspectRatio');
-            if h(3)==1
-                  set(gca,'DataAspectRatio',[1 1 1/max(h(1:2))])
-            else
-                  set(gca,'DataAspectRatio',[1 1 h(3)])
-            end
 
         end % #plot_pts
         

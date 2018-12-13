@@ -52,6 +52,7 @@ classdef (Abstract) Trajectory < handle
                         % Pick Direction of Normal which Brings o5 Closest to Origin:
                         obj.normals(i,:) = -obj.normals(i,:);
                     end
+                    if sum(isnan(obj.normals
                 end
                 % Ensure Continuity with Endpoint Normals:
                 obj.normals(1,:) = obj.normals(2,:);
@@ -146,7 +147,7 @@ classdef (Abstract) Trajectory < handle
         % Returns the Interpolated Point at the Given Time into the
         % Trajectory Execution
         function p = point_t(obj,t)
-            p = point(obj.s_t(t));
+            p = obj.point(obj.s_t(t));
         end % #point_t
         
         % Returns the Interpolated Trajectory Normal at the Given Distance
@@ -167,7 +168,7 @@ classdef (Abstract) Trajectory < handle
         % Returns the Interpolated Trajectory Normal at the Given Time into
         % the Trajectory Execution
         function n = normal_t(obj,t)
-            n = normal(obj.s_t(t));
+            n = obj.normal(obj.s_t(t));
         end % #normal_t
         
         % Returns the Interpolated Trajectory Tangent at the Given Distance
@@ -189,6 +190,12 @@ classdef (Abstract) Trajectory < handle
             t = t / norm(t); % Direction of Velocity Vector
         end % #tangent
         
+        % Returns the Interpolated Trajectory Normal at the Given Time into
+        % the Trajectory Execution
+        function n = tangent_t(obj,t)
+            n = obj.tangent(obj.s_t(t));
+        end % #normal_t
+        
         % Returns the Interpolated Trajectory Velocity Vector at the 
         % Given Distance along the Trajectory Path with sampling resolution
         % res (optional)
@@ -198,7 +205,11 @@ classdef (Abstract) Trajectory < handle
             elseif(s > obj.dist(end))
                 v = zeros(size(obj.points(1,:)));
             else
-                v = obj.v_s(s) * obj.tangent(s,res); % Magnitude * tangent vector
+                if nargin > 2
+                    v = obj.v_s(s) * obj.tangent(s,res); % Magnitude * tangent vector
+                else
+                    v = obj.v_s(s) * obj.tangent(s); % Magnitude * tangent vector
+                end
             end
         end % #velocity_s
         
@@ -217,14 +228,64 @@ classdef (Abstract) Trajectory < handle
             if obj.dim ~= 3
                 error('#RPY works in SE(3) (3-Dimensional Space)');
             end
-            dt = obj.data.timestep;
-            ntp = obj.normal_t(t_s(s)+dt);
-            nt = obj.normal_t(t_s(s)+dt);
-            tt
-            dndt = (obj.normal_t(t_s(s)+dt) - obj.normal_t(t_s(s))) / dt;
-            dndt = (obj.normal_t(t_s(s)+dt) - obj.normal_t(t_s(s))) / dt;
+            axes = [1,2,3];
+            % Check Inputs:
+            if prod(axes~=naxis) || prod(axes~=taxis)
+                error('naxis and taxis must be 1, 2, or 3');
+            end
+            if naxis == taxis
+                error('naxis and taxis must be different axes');
+            end
+            % Figure out which axis is undeclared
+            aaxis = axes(axes~=naxis & axes~=taxis);
             
-        end
+            % Compute Axis Derivatives:
+            dt = obj.data.timestep;
+            ntp = obj.normal_t(obj.t_s(s)+dt);
+            nt = obj.normal_t(obj.t_s(s));
+            
+            ttp = obj.tangent_t(obj.t_s(s)+dt);
+            tt = obj.tangent_t(obj.t_s(s));
+            
+            atp = cross(ntp,ttp);
+            at = cross(nt,tt);
+            
+            dndt = (ntp - nt) ./ dt;
+            dtdt = (ttp - tt) ./ dt;
+            dadt = (atp - at) ./ dt;
+            
+            Rd(:, naxis) = dndt;
+            Rd(:, taxis) = dtdt;
+            Rd(:, aaxis) = dadt;
+        end % #RDot
+        
+        % Returns Desired Rotation Matrix at Position s
+        function R = R(obj, s, naxis, taxis)
+            if obj.dim ~= 3
+                error('#RPY works in SE(3) (3-Dimensional Space)');
+            end
+            axes = [1,2,3];
+            % Check Inputs:
+            if prod(axes~=naxis) || prod(axes~=taxis)
+                error('naxis and taxis must be 1, 2, or 3');
+            end
+            if naxis == taxis
+                error('naxis and taxis must be different axes');
+            end
+                
+            % Construct all Three Vectors:
+            n = obj.normal(s);
+            t = obj.tangent(s);
+            a = cross(n,t);
+            
+            % Figure out which axis is undeclared
+            aaxis = axes(axes~=naxis & axes~=taxis);
+            
+            % Construct Rotation Matrix:
+            R(:,naxis) = n;
+            R(:,taxis) = t;
+            R(:,aaxis) = a;
+        end % #RDot
         
         % Computes the Roll, Pitch, and Yaw Angles Required to Achieve the
         % Orientation Required at a Distance, s, along the Path. Returns as
@@ -308,14 +369,6 @@ classdef (Abstract) Trajectory < handle
                 end
                 
             hold off
-                
-            % Ensure Axes are Scaled Equally (bounding cube):
-            h = get(gca,'DataAspectRatio');
-            if h(3)==1
-                  set(gca,'DataAspectRatio',[1 1 1/max(h(1:2))])
-            else
-                  set(gca,'DataAspectRatio',[1 1 h(3)])
-            end
 
         end % #plot_pts
         

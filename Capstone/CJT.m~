@@ -212,7 +212,7 @@ classdef CJT < Trajectory
             elseif(dist > obj.dist(end))
                 v = zeros(size(obj.points(1,:)));
             else
-                v = obj.v_s(s) * obj.tangent(s,res); % Magnitude * tangent vector
+                v = obj.v_s(s) * obj.tangent(s); % Magnitude * tangent 
             end
         end % #velocity_s
         

@@ -65,7 +65,7 @@ classdef Trajectory < handle
                     p(i) = interp1(obj.dist, obj.points(:,i), dist, 'spline');
                 end
             end
-        end
+        end % #point
         
         % Returns the Interpolated Trajectory Normal at the Given Distance
         % along the Trajectory Path
@@ -80,7 +80,22 @@ classdef Trajectory < handle
                     n(i) = interp1(obj.dist, obj.normals(:,i), dist, 'spline');
                 end
             end
-        end
+        end % #normal
+        
+        % Returns the Interpolated Trajectory Tangent at the Given Distance
+        % along the Trajectory Path
+        function t = tangent(obj, dist, res)
+            % Effective Sample Resolution (ideal number of points along
+            % trajectory):
+            if nargin < 3
+                res = obj.dist(end) / max(1000, obj.numPts);
+            end
+            
+            % Use interpolated sampling in case set of waypoints is
+            % sparse and to ensure continuity with path:
+            t = obj.point(dist) - obj.point(dist - res*obj.dsist(end));
+            t = t / norm(t); % Direction of Velocity Vector
+        end % #tangent
         
         % Plots the Points of the Trajectory and the Normals Along It
         function plot_pts(obj)

@@ -4,7 +4,7 @@
 classdef RobotController < handle
     properties(SetAccess = immutable)
         robot; %                - Robot3D object being controlled
-        RobotHardware; %        - Close to the Metal Hebi Controller for Issuing Commands to the Robot
+        robotHardware; %        - Close to the Metal Hebi Controller for Issuing Commands to the Robot
     end % immutable properties
     
     properties(SetAccess = private, GetAccess = public)
@@ -36,8 +36,18 @@ classdef RobotController < handle
         function rc = RobotController(rob)
             rc.robot = rob;
             rc.clock = Clock(); % Set Default Clock
+        end % ctor
+        
+        % Initializes Connection to Robot Hardware
+        function initializeHardwareConnection(rc)
+            HebiLookup.setLookupAddresses('*');
+            HebiLookup.clearModuleList();
+            HebiLookup.clearGroups();
+            pause(3);
             
-            rc.RobotHardware =  HebiLookup.newGroupFromFamily('*');
+            robotHardware = HebiLookup.newGroupFromNames('Robot B',{'J1','J2', 'J3', 'J4', 'J5'});
+            robotHardware.setCommandLifetime(2);
+            
             gains_struct_wrapper = load('gains_file.mat'); %contains gains_struct
             gains_struct = gains_struct_wrapper.gains_struct;
 
@@ -46,14 +56,7 @@ classdef RobotController < handle
             gains_struct.positionKi = [0.005 0 0 0 0];
             gains_struct.positionKd = [0.005 0 0.03 0 0];
             % display(gains_struct) will show you other fields you can modify
-            rc.RobotHardware.set('gains', gains_struct); % note this is the set function, not send
-
-        end % ctor
-        
-        % Initializes Connection to Robot Hardware
-        function initializeHardwareConnection(rc)
-            warning('#initializeHardwareConnection Not Implemented for Robot Hardware');
-            % @TODO
+            rc.robotHardware.set('gains', gains_struct); % note this is the set function, not send
         end % #initializeHardwareConnection
         
         % Updates the Robot's State from Feedback

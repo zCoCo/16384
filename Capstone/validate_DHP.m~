@@ -1,0 +1,24 @@
+function validate_DHP()
+    % Setup Robot:
+    dhp = [...
+        0,			pi/2,		116.23e-3,		0;		...
+        327.76e-3,	pi,			0,				0;		...
+        0,          -pi/2,      2.5e-3,			-pi/2;	...
+        270.0e-3,	pi/2,		94.05e-3,		-pi/2;	...
+        266.70e-3,	pi/2,		54.23e-3,		0
+    ];
+    actuatedJoints = 4 * ones(size(dhp,1),1);
+    robot = Robot3D(dhp, actuatedJoints, gravity);
+    
+    % Fetch Data:
+    wps_w = csvread('DH_test_wps_w.csv'); % Workspace Waypoints
+    wps_j = csvread('DH_test_wps_j.csv'); % Jointspace Waypoints
+    log_w = []; % Log of Workspace Parameters Computed Using the DHP Matrix
+    
+    % Plot Path:
+    figure();
+    for i = 1:size(wps_w, 1)
+        x = 
+        log_w(end+1, :) = robot.ee(
+        scatter3(obj.points(:,1), obj.points(:,2), obj.points(:,3));
+end % #verify_DHP

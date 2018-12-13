@@ -2,6 +2,7 @@ function CapstoneDemo()
    traj_file = 'sine.csv';
    
     %% Initialize Robot and Controller:
+    disp('Initializing Robot and Controller. . .'), beep;
     % Geometry:
     dhp = [...
         0,			pi/2,		116.23e-3,		0;		...
@@ -13,14 +14,14 @@ function CapstoneDemo()
     actuatedJoints = 4 * ones(size(dhp,1),1);
     
     % Dynamics:
-    gravity = -[fbk.accelX(1) fbk.accelY(1) fbk.accelZ(1)] % Get gravity vector to Compensate for being un-level (i/a)
+    gravity = -[0,0,9.81];%-[fbk.accelX(1) fbk.accelY(1) fbk.accelZ(1)] % Get gravity vector to Compensate for being un-level (i/a)
     
     robot = Robot3D(dhp, actuatedJoints, gravity);
     rc = RobotController(robot);
         rc.sim = true; % Still Simulating...
     
     %% Get the Robot to Hold Still While Doing Computations:
-    disp('Balancing Robot. . .');
+    disp('Balancing Robot. . .'), beep;
     rc.updateState(); % Fetch Feedback Data
     rc.command.sent = false;
     rc.command.q = robot.zeros();
@@ -30,14 +31,21 @@ function CapstoneDemo()
     
     %% Load and Precompute Traj:
     % Compute Workspace Trajectory from Waypoint File:
-    disp('Precomputing Workspace Trajectory . . .');
-    traj_w = CJT(csvread(traj_file), 1000, 10, 1000, 250);
+    disp('Precomputing Workspace Trajectory . . .'), beep;
+    wps = csvread(traj_file); % Get Waypoints from file
+    % Prepend Current Position from Feedback for Continuity and "warm start" to IK:
+    rc.updateState();
+    x0 = robot.ee(rc.currState.q);
+    wps = [x0(1:3); x0(1:3); x0(1:3); wps];
+    % Initialize Workspace Trajectory:
+    traj_w = CJT(wps, 1000, 10, 1000, 250);
     
     % Compute Joint Trajectory from WorkspaceTrajectory:
-    disp('Precomputing Jointspace Trajectory. . .');
+    disp('Precomputing Jointspace Trajectory. . .'), beep;
     traj_j = JointTraj(traj_w);
+    fprintf('  > Target Time: %f\n', traj_w.params.tcrit(end));
     
-    %% Display Waypoints, Computed Workspace Trajectory, and Current Robot State:
+    %% Display Waypoints, Waypoint Path Normals, Computed Workspace Trajectory, and Current Robot State:
     robot.visualize();
     hold on
         % Waypoints:
@@ -50,15 +58,15 @@ function CapstoneDemo()
     hold off
     
     %% Wait for Command:
-    disp('Ready! Clear the field and press any key to go.');
+    disp('Ready! Clear the field and press any key to go.'), beep;
     pause
     
     %% Execute Trajectory:
-    disp('Executing Trajectory. . .');
+    disp('Executing Trajectory. . .'), beep;
     rc.followTrajectory(traj_j, true);
     
     %% Keep Things Open for Inspection.
-    disp('Done!');
+    disp('Done!'), beep;
     pause
     
 end % #CapstoneDemo

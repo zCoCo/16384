@@ -354,7 +354,7 @@ classdef (Abstract) Trajectory < handle
                 zmin = min(obj.points(:,3)); zmax = max(obj.points(:,3));
                 sz = norm([xmax-xmin, ymax-ymin, zmax-zmin]);
                 
-                L = sz / 20; % Size of Each Normal Vector
+                L = sz / 20; % Size of Each Normal/Tangent Vector
                 
                 % Plot Normals
                 for i = floor(linspace(1,obj.numPts, 50))

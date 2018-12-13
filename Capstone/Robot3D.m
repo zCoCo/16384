@@ -292,23 +292,7 @@ classdef Robot3D < handle
         function thetas = inverse_kinematics(robot, initial_thetas, goal_position)
             % Returns the joint angles which minimize a simple squared-distance
             % cost function.
-
-            % Make sure that all the parameters are what we're expecting.
-            % This helps catch typos and other lovely bugs.
-            if size(initial_thetas, 1) ~= robot.dof || size(initial_thetas, 2) ~= 1
-                error('Invalid initial_thetas: Should be a column vector matching robot DOF count, is %dx%d.', size(initial_thetas, 1), size(initial_thetas, 2));
-            end
-
-            if (size(goal_position, 1) ~= 6 || size(goal_position, 2) ~= 1)
-                error('Invalid goal_position: Should be a 6 length column vector, is %dx%d.', size(goal_position, 1), size(goal_position, 2));
-            end
-            
-            function c = cost(q)
-                pe = robot.ee(q);
-                c = (pe-goal_position)' * (pe-goal_position);
-            end
-            
-            thetas = fmincon(cost, initial_thetas, [],[],[],[], robot.joint_limits.mins, robot.joint_limits.maxs);
+            thetas = robot.ikd(initial_thetas, goal_position, robot.dof, 1:robot.dof);
         end % #inverse_kinematics
         % Shorthand for preforming the inverse kinematics.
         function ik = ik(robot, initial_thetas, goal_position)
@@ -334,13 +318,13 @@ classdef Robot3D < handle
             
             function c = cost(q)
                 pe = robot.p(joint, q);
-                D = (pe-goal_position) .* [1;1;1;1/100;1/50;1/50];
+                D = (pe-goal_position) .* [1;1;1;1/75;1/75;1/75];
                 c = D(idxs)' * D(idxs);
             end
             
             options = optimset( 'algorithm', {'levenberg-marquardt',.1}, ...
                     'DerivativeCheck', 'off', ...
-                    'TolX', .002, ...
+                    'TolX', .002/500, ... % Low to prevent chugging at slow speeds
                     'Display', 'off', ...
                     'MaxIter', 500 );
 

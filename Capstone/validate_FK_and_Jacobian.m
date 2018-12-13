@@ -1,4 +1,4 @@
-function [] = milestone_validate_robot_class(logName)
+function [] = validate_FK_and_Jacobian(logName)
 
 %% Load log data (allow for sample data as well as arbitrary logs)
 if nargin == 0
@@ -63,4 +63,4 @@ for i =1:6
 end
 savefig('forces');
 
-end
+end % #validate_FK_and_Jacobian

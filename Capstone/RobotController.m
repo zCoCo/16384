@@ -128,7 +128,7 @@ classdef RobotController < handle
                     rc.command.sent = false;
                     rc.issueCommand();
                 else
-                    pause(0.01); % CPU Relief
+                    pause(0.0075); % CPU Relief
                 end
             end % ~done?
             

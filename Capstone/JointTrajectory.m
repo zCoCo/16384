@@ -29,6 +29,14 @@ classdef JointTrajectory < handle
                 obj.jointVels(:,i) = pinv(J)*[traj_w.velocity_s(s)'; 0;0;0]; % omega];
                 fprintf('. . . %d / %d\n', i, size(traj_w.data.xs, 2));
             end
+            
+            % Smooth out any chugging caused by IK finishing too early
+            % (easier to do coarser IK and smooth than to wait for it to
+            % converge more fully for all the points):
+            for i = 1:robot.dof
+                obj.jointPositions(i,:) = smooth(obj.times, obj.jointPositions(i,:), 0.05, 'rloess');
+                obj.jointVels(i,:) = smooth(obj.times, obj.jointVels(i,:), 0.05, 'rloess');
+            end
         end
         
         function p = position_t(obj, t)

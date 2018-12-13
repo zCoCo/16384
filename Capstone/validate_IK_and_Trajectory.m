@@ -8,7 +8,10 @@ function validate_IK_and_Trajectory()
         266.70e-3,	pi/2,		54.23e-3,		0
     ];
     actuatedJoints = 4 * ones(size(dhp,1),1);
-    robot = Robot3D(dhp, actuatedJoints);
+    robot = Robot3D( ...
+        dhp, actuatedJoints, ...
+        [-0.9*pi/2; 0; -pi/2; -pi/2; -pi/2], [0.9*pi/2; pi; pi/2; pi/2; pi/2] ...
+    );
     
     % Fetch Data:
     wps_w = csvread('sine.csv'); % Workspace Waypoints
@@ -33,7 +36,7 @@ function validate_IK_and_Trajectory()
         log_w(end+1, :) = X(1:3);
         
         % Update Data Logging:
-        diffSum = diffSum + norm(p-X);
+        diffSum = diffSum + norm(p(1:3)-X(1:3));
         numUpdates = numUpdates + 1
         
         robot.visualize(q);

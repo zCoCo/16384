@@ -19,6 +19,10 @@ classdef Robot3D < handle
         model %                     - RigidBodyTree Model of Robot for Visualization
         zero; %                     - Zero Vector of Length DOF
         ones; %                     - Ones Vector of Length DOF
+        
+        JCOMS; %                    - Positions of the COM of Each Joint w.r.t. the Previous Frame
+        LCOMS; %                    - Positions of the COM of Each Link w.r.t. the Same Frame
+        ECOM; %                     - Position of the COM of the End Effector w.r.t. the Final Frame
     end
     
     methods
@@ -26,7 +30,7 @@ classdef Robot3D < handle
         % Denavit-Hartenberg Parameter Matrix, a Vector Indicating which 
         % Column in the DHP Matrix is Actuated (0 if not) for Each Row, 
         % and Optioinal Joint Limits and Mass Parameters.
-        function robot = Robot3D(dhpMat, actuatedJoints, jointmins, jointmaxs, link_masses, joint_masses, end_effector_mass)
+        function robot = Robot3D(dhpMat, actuatedJoints, jointmins, jointmaxs, link_masses, joint_masses, end_effector_mass, jcoms, lcoms, ecom)
             % Initialize Geometric Parameters:
             % Make sure that all the parameters are what we're expecting.
             
@@ -83,10 +87,16 @@ classdef Robot3D < handle
                 robot.link_masses = link_masses;
                 robot.joint_masses = joint_masses;
                 robot.end_effector_mass = end_effector_mass;
+                robot.JCOMS = jcoms;
+                robot.LCOMS = lcoms;
+                robot.ECOM = ecom;
             else
                 robot.link_masses = zeros(robot.dof);
                 robot.joint_masses = zeros(robot.dof);
                 robot.end_effector_mass = 0;
+                robot.JCOMS = zeros(3,robot.dof-1);
+                robot.LCOMS = zeros(4,robot.dof-1);
+                robot.ECOM = zeros(3,1);
             end % nargin>1
             
             % Create Visualization Model:
@@ -127,7 +137,7 @@ classdef Robot3D < handle
             
             showdetails(robot.model);
         end % ctor
-       
+        
         % Returns the forward kinematic map for each frame, one for each 
         % link. Link i is given by frames(:,:,i), 
         % and the end effector frame is frames(:,:,end).
@@ -416,6 +426,36 @@ classdef Robot3D < handle
             end
             hold off
         end % #plot
+        
+        % Plot All Given Centers of Mass
+        function plotCOMS(robot, q)
+            xs = []; ys = []; zs = [];
+            fk = robot.fk(q);
+            
+            for i = 1:robot.dof-1
+                % Joints:
+                if i > 1
+                    H = fk(:,:,i-1);
+                    X = H * [robot.JCOMS(:,i); 1];
+                    xs = [xs; X(1)];
+                    ys = [ys; X(2)];
+                    zs = [zs; X(3)];
+                end
+                % Links:
+                H = fk(:,:,i);
+                X = H * [robot.LCOMS(:,i); 1];
+                xs = [xs; X(1)];
+                ys = [ys; X(2)];
+                zs = [zs; X(3)];
+            end
+            % End Effector:
+            H = fk(:,:,end);
+            X = H * [robot.ECOM; 1];
+            xs = [xs; X(1)];
+            ys = [ys; X(2)];
+            zs = [zs; X(3)];
+            scatter3(xs,ys,zs);
+        end % #plotCOMS
 
     end % methods
 end % classdef Robot3D

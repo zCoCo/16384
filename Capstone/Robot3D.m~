@@ -19,6 +19,10 @@ classdef Robot3D < handle
         model %                     - RigidBodyTree Model of Robot for Visualization
         zero; %                     - Zero Vector of Length DOF
         ones; %                     - Ones Vector of Length DOF
+        
+        JCOMS; %                    - Positions of the COM of Each Joint w.r.t. the Previous Fram
+        LCOMS;
+        ECOM;
     end
     
     methods
@@ -26,7 +30,7 @@ classdef Robot3D < handle
         % Denavit-Hartenberg Parameter Matrix, a Vector Indicating which 
         % Column in the DHP Matrix is Actuated (0 if not) for Each Row, 
         % and Optioinal Joint Limits and Mass Parameters.
-        function robot = Robot3D(dhpMat, actuatedJoints, jointmins, jointmaxs, link_masses, joint_masses, end_effector_mass)
+        function robot = Robot3D(dhpMat, actuatedJoints, jointmins, jointmaxs, link_masses, joint_masses, end_effector_mass, jcoms, lcoms, ecom)
             % Initialize Geometric Parameters:
             % Make sure that all the parameters are what we're expecting.
             
@@ -83,10 +87,16 @@ classdef Robot3D < handle
                 robot.link_masses = link_masses;
                 robot.joint_masses = joint_masses;
                 robot.end_effector_mass = end_effector_mass;
+                robot.JCOMS = jcoms;
+                robot.LCOMS = lcoms;
+                robot.ECOM = ecom;
             else
                 robot.link_masses = zeros(robot.dof);
                 robot.joint_masses = zeros(robot.dof);
                 robot.end_effector_mass = 0;
+                robot.JCOMS = zeros(3,robot.dof-1);
+                robot.LCOMS = zeros(4,robot.dof-1);
+                robot.ECOM = zeros(3,1);
             end % nargin>1
             
             % Create Visualization Model:
@@ -188,7 +198,7 @@ classdef Robot3D < handle
             z = H_0_i(3,4);
             
             if(H_0_i(1,1) == 0 || H_0_i(2,1) == 0)
-                yaw = atan2(R(1,2), H_0_i(2,2));
+                yaw = atan2(H_0_i(1,2), H_0_i(2,2));
                 pitch = pi/2;
                 roll = 0;
             else
@@ -205,7 +215,6 @@ classdef Robot3D < handle
         function p = p(robot, idx, thetas)
             p = robot.position(idx, thetas);
         end
-        
         
         % Returns position for the end effector given a set of joint
         % angles.
@@ -293,23 +302,7 @@ classdef Robot3D < handle
         function thetas = inverse_kinematics(robot, initial_thetas, goal_position)
             % Returns the joint angles which minimize a simple squared-distance
             % cost function.
-
-            % Make sure that all the parameters are what we're expecting.
-            % This helps catch typos and other lovely bugs.
-            if size(initial_thetas, 1) ~= robot.dof || size(initial_thetas, 2) ~= 1
-                error('Invalid initial_thetas: Should be a column vector matching robot DOF count, is %dx%d.', size(initial_thetas, 1), size(initial_thetas, 2));
-            end
-
-            if (size(goal_position, 1) ~= 6 || size(goal_position, 2) ~= 1)
-                error('Invalid goal_position: Should be a 6 length column vector, is %dx%d.', size(goal_position, 1), size(goal_position, 2));
-            end
-            
-            function c = cost(q)
-                pe = robot.ee(q);
-                c = (pe-goal_position)' * (pe-goal_position);
-            end
-            
-            thetas = fmincon(cost, initial_thetas, [],[],[],[], robot.joint_limits.mins, robot.joint_limits.maxs);
+            thetas = robot.ikd(initial_thetas, goal_position, robot.dof, 1:robot.dof);
         end % #inverse_kinematics
         % Shorthand for preforming the inverse kinematics.
         function ik = ik(robot, initial_thetas, goal_position)
@@ -333,15 +326,20 @@ classdef Robot3D < handle
                 error('Invalid goal_position: Should be a 6 length column vector, is %dx%d.', size(goal_position, 1), size(goal_position, 2));
             end
             
-            disp('1');
-            
             function c = cost(q)
                 pe = robot.p(joint, q);
-                D = pe(idxs)-goal_position(idxs);
-                c = D' * D;
+                D = (pe-goal_position) .* [1;1;1;1/65;1/50;1/50];
+                c = D(idxs)' * D(idxs);
             end
             
-            thetas = fmincon(@cost, initial_thetas, [],[],[],[], robot.joint_limits.mins, robot.joint_limits.maxs);
+            options = optimset( 'algorithm', {'levenberg-marquardt',.1}, ...
+                    'DerivativeCheck', 'off', ...
+                    'TolX', .002/750, ... % Low to prevent chugging at slow speeds
+                    'Display', 'off', ...
+                    'MaxIter', 500 );
+
+            thetas = lsqnonlin( @cost, initial_thetas, [], [], options );
+            %thetas = fmincon(@cost, initial_thetas, [],[],[],[], robot.joint_limits.mins, robot.joint_limits.maxs);
         end % #inverse_kinematics_decoupled
         
         % Shorthand for performing the decoupled inverse kinematics.
@@ -428,6 +426,36 @@ classdef Robot3D < handle
             end
             hold off
         end % #plot
+        
+        % Plot All Given Centers of Mass
+        function plotCOMS(robot, q)
+            xs = []; ys = []; zs = [];
+            fk = robot.fk(q);
+            
+            for i = 1:robot.dof-1
+                % Joints:
+                if i > 1
+                    H = fk(:,:,i-1);
+                    X = H * [robot.JCOMS(:,i); 1];
+                    xs = [xs; X(1)];
+                    ys = [ys; X(2)];
+                    zs = [zs; X(3)];
+                end
+                % Links:
+                H = fk(:,:,i);
+                X = H * [robot.LCOMS(:,i); 1];
+                xs = [xs; X(1)];
+                ys = [ys; X(2)];
+                zs = [zs; X(3)];
+            end
+            % End Effector:
+            H = fk(:,:,end);
+            X = H * [robot.ECOM; 1];
+            xs = [xs; X(1)];
+            ys = [ys; X(2)];
+            zs = [zs; X(3)];
+            scatter3(xs,ys,zs);
+        end % #plotCOMS
 
     end % methods
 end % classdef Robot3D

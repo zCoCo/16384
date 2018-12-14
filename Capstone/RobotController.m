@@ -108,7 +108,7 @@ classdef RobotController < handle
                 % Compute Target Robot State:
                 rc.command.sent = false;
                 rc.command.q = traj.position_t(T);
-                rc.command.v = traj.velocity_t(T);
+                %rc.command.v = traj.velocity_t(T);
                 rc.issueCommand();
                 
                 numCommands = numCommands + 1;
@@ -146,8 +146,11 @@ classdef RobotController < handle
                     end
                 else
                     rc.cmd.position = rc.command.q'; % transpose turns column into row vector for commands
-                    if ~isempty(rc.command.v)
-                        rc.cmd.velocity = rc.command.v'; % transpose turns column into row vector for commands
+                    if ~isempty(rc.command.v) && rc.command.v ~= rc.commState.v
+                        rc.cmd.velocity = rc.command.v';
+                    end
+                    if ~isempty(rc.command.t) && rc.command.t ~= rc.commState.t
+                        rc.cmd.effort = rc.command.t';
                     end
                     rc.robotHardware.set(rc.cmd);
                 end

@@ -1,6 +1,6 @@
 function CapstoneDemo()
     %% Demo Parameters
-   sim = true;
+   sim = false;
    useGravComp = false;
    traj_file = 'straight.csv';
    if contains(traj_file, 'sine')
@@ -8,9 +8,9 @@ function CapstoneDemo()
    else
        home_position = [0.5671; 0.3366; 1.469; 0.5551; -0.1556];
    end
-   speed = 10*0.005; % [m/s]
+   speed = 0.01; % [m/s]
    offset_y = [0,25.4e-3,0]; % Push target points futher away so the arm goes fully through board
-   offset_z = [0,0,0]; % Compensate for constant sag (primitive alternative to gravComp if it keeps freaking out).
+   offset_z = [0,0,-3.5e-3]; % Compensate for constant sag (primitive alternative to gravComp if it keeps freaking out).
    
     %% Initialize Robot and Controller:
     disp('Initializing Robot and Controller. . .'), beep;
@@ -71,7 +71,7 @@ function CapstoneDemo()
     M(:,3) = linspace(x0(3), A0(3)-0.002, 50);
     wps = [M; wps];
     % Initialize Workspace Trajectory:
-    traj_w = CJT(wps, [0,0,0], 100, 1, speed, 500);
+    traj_w = CJT(wps, [0,0,0], 100, 1, speed, 250);
     
     
     %% Display Waypoints, Waypoint Path Normals, Computed Workspace Trajectory, and Current Robot State:

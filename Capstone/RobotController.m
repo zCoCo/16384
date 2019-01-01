@@ -7,6 +7,10 @@ classdef RobotController < handle
         robotHardware; %        - Close to the Metal Hebi Controller for Issuing Commands to the Robot
         cmd;
         fbk;
+        log = struct(...
+            'errors', [],...
+            'times', []...
+        );
     end % immutable properties
     
     properties(SetAccess = private, GetAccess = public)
@@ -105,11 +109,19 @@ classdef RobotController < handle
 %                     rc.clock.pause();
 %                     rc.clock.resume(); % Break here for in-loop debugging
                 
-                % Compute Target Robot State:
+            
+                % Command Robot:
                 rc.command.sent = false;
                 rc.command.q = traj.position_t(T);
                 %rc.command.v = traj.velocity_t(T);
                 rc.issueCommand();
+                
+                % Update Log:
+                rc.updateState();
+                e = rc.commState.q - rc.currState.q';
+                rc.log.errors = [rc.log.errors; e];
+                rc.log.times = [rc.log.times; T];
+
                 
                 numCommands = numCommands + 1;
                 
@@ -119,7 +131,7 @@ classdef RobotController < handle
                         scatter3(traj_w.points(:,1), traj_w.points(:,2), traj_w.points(:,3));
                     hold off
                 end
-    
+                
                 if(T > traj.times(end))
                     done = 1;
                     % Stop Immediately:
@@ -146,12 +158,14 @@ classdef RobotController < handle
                     end
                 else
                     rc.cmd.position = rc.command.q'; % transpose turns column into row vector for commands
+                    %{
                     if ~isempty(rc.command.v) && rc.command.v ~= rc.commState.v
                         rc.cmd.velocity = rc.command.v';
                     end
                     if ~isempty(rc.command.t) && rc.command.t ~= rc.commState.t
                         rc.cmd.effort = rc.command.t';
                     end
+                    %}
                     rc.robotHardware.set(rc.cmd);
                 end
                 

@@ -8,9 +8,9 @@ function CapstoneDemo()
    else
        home_position = [0.5671; 0.3366; 1.469; 0.5551; -0.1556];
    end
-   speed = 0.01; % [m/s]
+   speed = 0.04; % [m/s]
    offset_y = [0,25.4e-3,0]; % Push target points futher away so the arm goes fully through board
-   offset_z = [0,0,-3.5e-3]; % Compensate for constant sag (primitive alternative to gravComp if it keeps freaking out).
+   offset_z = [0,0,-6.5e-3]; % Compensate for constant sag (primitive alternative to gravComp if it keeps freaking out).
    
     %% Initialize Robot and Controller:
     disp('Initializing Robot and Controller. . .'), beep;
@@ -71,7 +71,7 @@ function CapstoneDemo()
     M(:,3) = linspace(x0(3), A0(3)-0.002, 50);
     wps = [M; wps];
     % Initialize Workspace Trajectory:
-    traj_w = CJT(wps, [0,0,0], 100, 1, speed, 250);
+    traj_w = CJT(wps, [0,0,0], 100, 1, speed, 200);
     
     
     %% Display Waypoints, Waypoint Path Normals, Computed Workspace Trajectory, and Current Robot State:
@@ -117,9 +117,59 @@ function CapstoneDemo()
     fprintf('Ready! Clear the field and press any key to go.\n'), beep;
     pause
     
+    %% Start Logging:
+    currentDir = fileparts(mfilename('fullpath'));
+    logFile = rc.robotHardware.startLog('file', fullfile(currentDir, 'robot_data'));
+    
     %% Execute Trajectory:
     disp('Executing Trajectory. . .'), beep;
     rc.followJointTrajectory(traj_j, traj_w);
+    
+    %% Stop Logging and Plot Results
+    rc.robotHardware.stopLog();
+
+    figure();
+    hold on
+        for i = 1:robot.dof
+            subplot(3,2,i);
+            hold on
+                plot(rc.log.times, rc.log.errors(i,:)', 'b');
+                title(strcat('Joint ', num2str(i)));
+            hold off
+        end
+        % Put Legend in Last Slot in Grid:
+        subplot(3,2,6);
+        hold on
+            plot(0, 0, 'b');
+        hold off
+        legend('Joint Position Error [rad]');
+    hold off
+    
+    hebilog = HebiUtils.convertGroupLog(fullfile(currentDir, 'robot_data.hebilog'));
+
+    % Plot angle data
+    figure();
+    subplot(3,1,1);
+    plot(hebilog.time, hebilog.positionCmd, 'k', 'LineWidth', 1)
+    hold on;
+    plot(hebilog.time, hebilog.position, 'r--', 'LineWidth', 1)
+    hold off;
+    title('Plot of joint positions during trajectory');
+    xlabel('t');
+    ylabel('\theta');
+    subplot(3,1,2);
+    plot(hebilog.time, hebilog.velocityCmd, 'k', 'LineWidth', 1)
+    hold on;
+    plot(hebilog.time, hebilog.velocity, 'r--', 'LineWidth', 1)
+    hold off;
+    title('Plot of joint velocities during trajectory');
+    xlabel('t');
+    ylabel('joint velocities');
+    subplot(3,1,3);
+    plot(hebilog.time, hebilog.torque, 'r--', 'LineWidth', 1)
+    title('Plot of joint torques during trajectory');
+    xlabel('t');
+    ylabel('\tau');
     
     %% Keep Things Open for Inspection.
     disp('Done!'), beep;
